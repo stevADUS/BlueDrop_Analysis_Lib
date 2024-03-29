@@ -1,29 +1,20 @@
 # Standard imports
 import numpy as np
 
-def calcDynamicBearingCapacity(acceleration, massFFP, contactArea, volumeFFP, waterDrop, gravity = 9.80665, rho_w = 1020 ):
+def calcDynamicBearingCapacity(pffp_acceleration, massFFP, contactArea, volumeFFP, waterDrop, gravity = 9.80665, rho_w = 1020 ):
     # Function calculates the dynamic bearing capacity of the soil
+    # NOTE: USES PFFP acceleration NOT raw sensor acceleration
 
     # Inputs
         # dropType (S: "air" or "water" drop
-        # accleration: deaccleration array
+        # accleration: deaccleration of the PFFP
         # massFFP: Mass of the Free Fall Penetrometer (FFP)
         # contactArea: Array of contact areas between the FFP and the soil
         # rho_w: Density of water (If no val provided assumed to be 1020 [kg/m^3] which is a good estimate for ocean water)
         # volumeFFP: Volume of the FFP
 
+    # TODO Make sure this function works the way it should
     if waterDrop:
-        # TODO: This equation is super wrong
-        # FIXME: There should be a gravity force, a buoyant force, and the bearing capacity force at a minimum
-
-        # # Calc mass of water displaced by the FFP
-        # displacedWaterMass = rho_w * volumeFFP
-
-        # # Calc Buoyant mass of the FFP
-        # buoyantMass = massFFP - displacedWaterMass
-
-        # # Calc impact force
-        # force = buoyantMass * acceleration
 
         # Calc the force of gravity
         force_gravity = massFFP * gravity
@@ -32,11 +23,11 @@ def calcDynamicBearingCapacity(acceleration, massFFP, contactArea, volumeFFP, wa
         force_buoyant = rho_w * gravity * volumeFFP
 
         # Calc the bearing capacity force
-        force_bearing = massFFP * acceleration - force_buoyant + force_gravity
+        force_bearing = massFFP * pffp_acceleration - force_buoyant + force_gravity
 
     # Check for air drop
     elif not waterDrop:
-        force_bearing = massFFP * acceleration + force_gravity
+        force_bearing = massFFP * pffp_acceleration + force_gravity
 
     # Dynamic bearing capacity
     qDyn = force_bearing/contactArea
