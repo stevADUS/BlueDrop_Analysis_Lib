@@ -1,6 +1,18 @@
 import numpy as np
 from scipy.signal import find_peaks
 
+def find_drops(accel_data, impact_time_tol = 0.015, sample_freq = 120_000, min_peak_height = 2.8):
+# Purpose: Get the number of drops in the a file
+        
+    # Calc assumed tolerance for the length of impact
+    impact_window = impact_time_tol * sample_freq
+
+    drop_indexs, drop_info = find_peaks(accel_data, height = min_peak_height, distance = impact_window)
+        
+    num_drops = len(drop_indexs)
+
+    return drop_indexs, drop_info, num_drops
+
 def check_peaks_in_data(accel_data, height_range = 2.8):
     # Purpose: Check if a drop is in the file - for the
     # height_range: Can be a two element list or a single value. If list first val is minimum and second is the maximum for the peak

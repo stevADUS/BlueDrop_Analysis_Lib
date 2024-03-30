@@ -62,3 +62,45 @@ plt.show()
 #     go.Scatter(x = df["Time"], y = df["pore_pressure"], mode = "lines", name = "pore_pressure"),
 #     row = 2, col = 1
 # )
+
+# def trim_around_drop(drop_df, window = 0.15):
+#     # Purpose: Trim the data around the drop
+#     # window: Expected window around the peak of the drop that the entire drop should exist in
+
+#     pass
+# def find_start_end_drop(drop_df, peak):
+#     # Purpose: Select the start and end of a drop
+
+#     pass
+
+
+# def find_drops(pffp_df, time_tolerance = 200):
+#     # Purpose: Find the peak of a drop, the corresponding index, and number of drops in a bianry file
+
+#     # pffp_df: Dataframe of all pffp sensor data
+#     # Index tolerance: The check for drops finds all the values that are greater than a threshold, therefore, it will return multiple values for
+#     # Check the 18g sensor for drops
+#     # First array value is if there's a drop in the file
+#     info = check_peak_in_data(pffp_df["18g_accel"])
+    
+#     drop_in_file = info[0]
+#     if drop_in_file:
+#         # Unpack the other values
+#         peak_indices = info[1]
+        
+#         # Get the dict info
+#         dict_info = info[2]
+        
+#         # Get a rough estimate of the extent of the drop (Might just hardcode this)
+#         return peak_indices, dict_info
+#     else:
+#         num_drops_in_file = 0
+#         return 0
+    
+# peak_indices, dict_info = find_drops(df)
+
+# print(peak_indices, "\n", dict_info)
+
+# 1/120_000
+
+# peak_indices[0] - peak_indices[-1]
