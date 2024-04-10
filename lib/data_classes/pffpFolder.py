@@ -15,12 +15,12 @@ class pffpDataFolder(Folder):
         # init the parent class
         Folder.__init__(self, folder_dir)
 
-        self.num_bin_files = self.get_num_files(".bin")
         self.folder_dir = folder_dir # Store the folder directory
         self.pffp_id = pffp_id       # Store the PFFP id
         self.calibration_factor_dir = calibration_factor_dir # Directory containing the calibration factors for the PFFP
 
         # Init variables that aren't defined
+        self.num_pffp_files = "Not set"
         self.datetime_range = "Not set"
         self.calibration_excel_sheet = None
         self.calibration_params = None
@@ -28,11 +28,12 @@ class pffpDataFolder(Folder):
 
     def __str__(self):
         return f"Folder: {self.folder_dir} \nDate range: {self.datetime_range} \nPFFP id: {self.pffp_id} \
-                \nCalibration Param dir: {self.calibration_factor_dir} \nNum .bin files: {self.num_bin_files} \
+                \nCalibration Param dir: {self.calibration_factor_dir} \nNum .bin files: {self.num_pffp_files} \
                 \nNum files with drops: {self.num_drop_files}"
     
-    def read_calibration_excel_sheet(self, sheet_name):
+    def read_calibration_excel_sheet(self):
         # Purpose: Read the calibartion data for specified pffp id
+        sheet_name = "bluedrop_" + str(self.pffp_id)
 
         self.calibration_excel_sheet = pd.read_excel(self.calibration_factor_dir, sheet_name)
 
@@ -52,9 +53,9 @@ class pffpDataFolder(Folder):
         # Select those columns of the df
         self.calibration_params = data[["Sensor", offset_string, scale_string]]
 
-    def store_pffp_files(self):
+    def store_pffp_files(self, recursive = False, subfolder = ""):
         # Purpose: Store the binary files in the 
-        binary_file_dirs = self.get_directories_by_extension("bin")
+        binary_file_dirs = self.get_directories_by_extension("bin", recursive, subfolder)
 
         # init list to hold pffp files
         self.pffp_files = []
@@ -68,22 +69,28 @@ class pffpDataFolder(Folder):
             # add the pffpFile to the list
             self.pffp_files.append(pffpFile(file_dir, self.calibration_params))
 
-    def analyze_all_files(self, subfolder_dir = "no_drop_folder", use_pore_pressure = True):
+        self.num_pffp_files = len(self.pffp_files)
+
+    def analyze_all_files(self, subfolder_dir = "no_drop_folder", use_pore_pressure = True, store_df = True ):
         # Purpose: Get the files that have drops in them
 
-        # init arr to store a mask (True or False values) corresonding to all of the files in the folder
-        file_mask = np.zeros(len(self.pffp_files), dtype = bool)
-        pffp_file_dirs = []
+        # store_drop_df: Store the df if it's a drop
 
         # Init list to store the pffp files that contain drops and variable to store the number of files that contain drops
         self.pffp_drop_files = []
         self.pffp_no_drop_files = []
+        self.pffp_funky_files = []
+
         self.num_drop_files = 0
+        self.num_funky_files = 0
 
         full_subfolder_dir = os.path.join(self.folder_dir, subfolder_dir)
-        
+        funky_dir = os.path.join(self.folder_dir, "funky")
+
         # Try to create the subfolder
         create_folder_if_not_exists(full_subfolder_dir)
+
+        create_folder_if_not_exists(funky_dir)
 
         # Print progress bar label
         print("\nProgress analysing drops...")
@@ -94,8 +101,8 @@ class pffpDataFolder(Folder):
             start_time= time.time()
 
             # Get the number of drops in the pffp file
-            file.analyze_file_for_drop_info(use_pore_pressure)
-        
+            file.analyze_file_for_drop_info(use_pore_pressure, store_df = store_df)
+
             # Check if there's a drop in the file and append to the mask arr
             drop_in_file = file.check_drop_in_file()
 
@@ -114,18 +121,31 @@ class pffpDataFolder(Folder):
                 # Add the file to the no drop directory
                 self.pffp_no_drop_files.append(file)
             else:
-                # Store the drop files
-                self.pffp_drop_files.append(file)
+                
 
-                # Increment the number of files with drops
-                self.num_drop_files +=1
+                # Check if the file is funky
+                if file.funky:
+                    funky_file_dir = os.path.join(funky_dir, file.file_name)
+                    
+                    shutil.move(file.file_dir, funky_dir)
+
+                    file.file_dir = funky_file_dir
+
+                    self.pffp_funky_files.append(file)
+                    self.num_funky_files +=1
+                else:
+                    # Store the drop files
+                    self.pffp_drop_files.append(file)
+
+                    # Increment the number of files with drops
+                    self.num_drop_files +=1
             
             end_time= time.time()
 
-            time_left = (end_time - start_time) * (self.num_bin_files - (i+1))
+            time_left = (end_time - start_time) * (self.num_pffp_files - (i+1))
             
             # Print a progress bar
-            progress_bar(i+1, self.num_bin_files, time_left)
+            progress_bar(i+1, self.num_pffp_files, time_left)
 
         print("\nInitial analysis complete!")      
 
@@ -134,3 +154,4 @@ class pffpDataFolder(Folder):
             #  pffp_files list
             # pffp_no_drop list or pffp_drop list depending on where it is
         pass
+

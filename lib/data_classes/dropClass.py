@@ -1,7 +1,7 @@
 class Drop:
     #Purpose: Store info about a pffp drop
 
-    def __init__(self, containing_file, peak_index, file_drop_index, peak_info, water_drop = False):
+    def __init__(self, containing_file, peak_index, file_drop_index, peak_info, pressure_check = False):
 
         # Store the inputs
         self.containing_file   = containing_file   # Store which file the drop is in 
@@ -16,6 +16,7 @@ class Drop:
     
     def get_drop_start_end(self):
         # Purpose: Get the start and end of a drop
+
         pass
         # Use the peak index
     def store_sensor_data(self):

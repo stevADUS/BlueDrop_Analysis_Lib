@@ -12,11 +12,6 @@ def create_folder_if_not_exists(folder_path):
     else:
         print(f"Folder '{folder_path}' already exists.")
 
-def move_files_from_directories(file_dir, destination_folder):
-
-        file_dir = os.path.join(source_folder, name)
-        shutil.move(file_dir, destination_folder)
-
 def apply_mask_to_list(values, mask):
     return [value for value, m in zip(values, mask) if m]
 
