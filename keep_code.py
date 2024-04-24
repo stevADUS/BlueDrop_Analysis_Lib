@@ -250,3 +250,27 @@ plt.plot(time[drop_index[0] - index_window: drop_index[0] + index_window], accel
 
 print(test_folder.pffp_drop_files[index])
 test_folder.pffp_drop_files[index].quick_view(interactive = False)
+
+
+# Code that does a statistical analysis
+# Specify the change point detection method
+model = "l1"  # You can choose other models as well
+
+# Apply change point detection
+algo = rpt.Dynp(model=model).fit(smoothed_accel)
+result = algo.predict(n_bkps=1)  # You can specify the number of change points you want to detect
+
+print(result)
+result =np.array(result)-1
+
+def integrate_until_value(x, y, value, tol = 1e-3):
+    # Purpose: Integrate a function y= f(x) from a starting index until the integral reaches a certain value
+    # Assumes a fairly smooth curve. Increment in a stepwise fashion
+    
+    diff = 100
+    end = 100
+    while diff > tol:
+        integral = trapezoid(y[:end], x[:])
+
+        # Calc the difference
+        diff = integral[-1] - value

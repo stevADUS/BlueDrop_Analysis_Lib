@@ -53,7 +53,7 @@ class pffpFile(BinaryFile):
 
         return df
     
-    def binary_2_sensor_df(self, size_byte = 3, byte_order = "big", signed = True, acceleration_unit = "g", pressure_unit = "kPa", time_unit = "min"):
+    def binary_2_sensor_df(self, size_byte = 3, byte_order = "big", signed = True, acceleration_unit = "g", pressure_unit = "kPa", time_unit = "s"):
         # Purpose read a binary file and transform it to a processed df
         column_names = ["Count", 'Unknown', "2g_accel", "18g_accel", "50g_accel", "pore_pressure", "200g_accel", 
                                                                 "55g_x_tilt","55g_y_tilt", "250g_accel"]
@@ -115,7 +115,7 @@ class pffpFile(BinaryFile):
             raise ValueError("Onnly converison from psi to kPa implemented")
         return df
     
-    def analyze_file_for_drop_info(self, use_pore_pressure = True, store_df = True, overide_water_drop = False):
+    def analyze_file(self, use_pore_pressure = True, store_df = True, overide_water_drop = False):
         # Purpose: Analyzes a bin file, gets
         # number of drops in the file
         # peak location of the drops
@@ -212,7 +212,34 @@ class pffpFile(BinaryFile):
 
             # Set the tracker flag to false
             self.df_stored = True
+    
+    def process_drops(self):
+        # Purpose: Analyze the drops in the files
+
+        # Check if the df is stored
+        if self.df_stored:
+            # Temporarily store the df
+            df = self.df
+        else: 
+            # Load the df
+            df = self.binary_2_sensor_df(acceleration_unit = self.sensor_units[0], pressure_unit = self.sensor_units[1], time_unit= self.sensor_units[2])
+        
+        # display(df.head())
+        # loop over the drops in the file
+        accel = df["18g_accel"]
+        time = df["Time"]
+
+        for drop in self.drops:
+            # For the time being store the release and impulse data for all drops
+            drop.store_whole_drop = True
             
+            # Trim the acceleration data
+            drop.cut_accel_data(accel, time, input_units = {"accel":"g", "Time":"s"} )
+
+            # Integrate the drop (impulse and the release part because store_whole_drop=True)
+            drop.integrate_accel_data()
+         
+        
     def check_drop_in_file(self):
         # Purpose: check if there's a drop in the file
         if self.num_drops > 0:
@@ -260,7 +287,7 @@ class pffpFile(BinaryFile):
                 )
 
             # Update xaxis properties
-            fig.update_xaxes(title_text="Time (min)", row=3, col=1)
+            fig.update_xaxes(title_text="Time (s)", row=3, col=1)
 
             # Update yaxis properties
             fig.update_yaxes(title_text="Acceleration (g)", row=1, col=1)

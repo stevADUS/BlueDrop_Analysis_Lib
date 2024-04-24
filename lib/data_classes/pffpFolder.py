@@ -101,7 +101,7 @@ class pffpDataFolder(Folder):
             start_time= time.time()
 
             # Get the number of drops in the pffp file
-            file.analyze_file_for_drop_info(use_pore_pressure, store_df = store_df)
+            file.analyze_file(use_pore_pressure, store_df = store_df)
 
             # Check if there's a drop in the file and append to the mask arr
             drop_in_file = file.check_drop_in_file()
@@ -148,6 +148,25 @@ class pffpDataFolder(Folder):
             progress_bar(i+1, self.num_pffp_files, time_left)
 
         print("\nInitial analysis complete!")      
+
+    def process_drop_files(self):
+        # Purpose: Process all of the drops in the files that have drops 
+        
+        # Print progress bar label
+        print("\nProgress processing drops in files...")
+        # Loop over the files
+        for i, file in enumerate(self.pffp_drop_files):
+            # Get an estimate for how much longer is left
+            start_time= time.time()
+
+            # Process all the drops in that file
+            file.process_drops()
+
+            end_time= time.time()
+            
+            time_left = (end_time - start_time) * (self.num_drop_files - (i+1))
+            # Print a progress bar
+            progress_bar(i+1, self.num_drop_files, time_left)
 
     def get_file_index_from_name(self):
         # TODO: Purpose: Given a file name get the index of that file in
