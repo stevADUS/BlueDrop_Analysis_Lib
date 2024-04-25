@@ -274,3 +274,25 @@ def integrate_until_value(x, y, value, tol = 1e-3):
 
         # Calc the difference
         diff = integral[-1] - value
+
+def get_change_points(signal, n_change_points= 1, model = "l1"):
+    # Purpose: Use second order stationarity as a condtion to find the change points
+    # Used by Hunstein et al. in https://ascelibrary.org/doi/full/10.1061/JGGEFK.GTENG-11550
+    # For determining the mudline
+
+    # Possible models are: 
+    # l1: Penalizes the absolute difference between the data points and their estimated value after the change point. This model assumes that the changes are abrupt.
+    # l2: Penalizes the squared difference between the data points and their estimated value after the change point. This model assumes that the changes are smooth.
+    # rbf: Uses Gaussian basis functions to model the data. This model is suitable for detecting changes in periodic or oscillatory data.
+    # linear: Assumes that the data follows a linear trend with abrupt changes.
+    # discrete: Assumes that the data points are independent and identically distributed, with different means before and after the change point.
+    # normal: Assumes that the data points are normally distributed, with different means and variances before and after the change point.
+    # full: Uses a custom model defined by the user. You can specify your own cost function and penalty.
+
+    # Apply change point detection
+    algo = rpt.Dynp(model=model).fit(signal)
+    result = algo.predict(n_bkps=n_change_points)  # You can specify the number of change points you want to detect
+
+    # Zero shift the indices and return the results
+    # Returns the change points and the last index
+    return np.array(result)-1

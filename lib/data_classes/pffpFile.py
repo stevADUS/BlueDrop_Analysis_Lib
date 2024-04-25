@@ -3,6 +3,8 @@ import numpy as np
 from lib.data_classes.BinaryFile import BinaryFile
 from lib.signal_processing.signal_function import find_drops, moving_average
 from lib.data_classes.dropClass import Drop # Class that is used to represent drops
+from lib.general_functions.general_function import convert_accel_units, convert_time_units, convert_length_units
+
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import matplotlib.pyplot as plt
@@ -52,8 +54,8 @@ class pffpFile(BinaryFile):
         df[columns] = df[columns] * acceleration_conversion_dict[output_unit]
 
         return df
-    
-    def binary_2_sensor_df(self, size_byte = 3, byte_order = "big", signed = True, acceleration_unit = "g", pressure_unit = "kPa", time_unit = "s"):
+            
+    def binary_2_sensor_df(self, size_byte = 3, byte_order = "big", signed = True, acceleration_unit = "g", pressure_unit = "kPa", time_unit = "min"):
         # Purpose read a binary file and transform it to a processed df
         column_names = ["Count", 'Unknown', "2g_accel", "18g_accel", "50g_accel", "pore_pressure", "200g_accel", 
                                                                 "55g_x_tilt","55g_y_tilt", "250g_accel"]
@@ -90,10 +92,10 @@ class pffpFile(BinaryFile):
         # Get the number of entries in a column
         num_entries = len(df.iloc[:, 0])
         
-        # Get the time steps
+        # Get the time steps and convert the time to minutes
         time = np.linspace(0, 1, num_entries)
         
-        # Store the time in seconds in the df
+        # Store the time in minutes in the df
         df.insert(0, "Time", time)
 
         # Acceleration scaling
@@ -229,17 +231,15 @@ class pffpFile(BinaryFile):
         accel = df["18g_accel"]
         time = df["Time"]
 
-        for drop in self.drops:
-            # For the time being store the release and impulse data for all drops
-            drop.store_whole_drop = True
-            
-            # Trim the acceleration data
-            drop.cut_accel_data(accel, time, input_units = {"accel":"g", "Time":"s"} )
+        for drop in self.drops:           
+            # Try to trim the acceleration data and integrate it
 
-            # Integrate the drop (impulse and the release part because store_whole_drop=True)
+            # Trim the acceleration data
+            drop.cut_accel_data(accel, time, input_units = {"accel":"g", "Time":"min"} )
+                
+            # Integrate the drop
             drop.integrate_accel_data()
-         
-        
+
     def check_drop_in_file(self):
         # Purpose: check if there's a drop in the file
         if self.num_drops > 0:
@@ -287,7 +287,7 @@ class pffpFile(BinaryFile):
                 )
 
             # Update xaxis properties
-            fig.update_xaxes(title_text="Time (s)", row=3, col=1)
+            fig.update_xaxes(title_text=f"Time {self.sensor_units[2]}", row=3, col=1)
 
             # Update yaxis properties
             fig.update_yaxes(title_text="Acceleration (g)", row=1, col=1)
@@ -327,6 +327,8 @@ class pffpFile(BinaryFile):
             axs[2].set_ylabel(f"Acceleration [{self.sensor_units[0]}]")
 
             # Label the x-axis
+            print(self.sensor_units[2])
+
             axs[0].set_xlabel(f"Time [{self.sensor_units[2]}]")
             axs[1].set_xlabel(f"Time [{self.sensor_units[2]}]")
             axs[2].set_xlabel(f"Time [{self.sensor_units[2]}]")
@@ -336,7 +338,6 @@ class pffpFile(BinaryFile):
 
             plt.tight_layout()
             plt.show()
-
 
     def check_pore_pressure_4_drop(self, df, window = 2500):
         # Purpose: use pore pressure to check if there's a drop in the file
@@ -364,3 +365,56 @@ class pffpFile(BinaryFile):
         time_peak_pressure_deriv = smoothed_time[pressure_indexs]
 
         return time_peak_pressure_deriv, num_drops
+    
+    def plot_drop_impulses(self, figsize = [4,6], save_figs = False, hold = False, legend = True,
+                            colors = ["black", "blue", "green", "orange", "purple", "brown"],
+                            units = {"Time":"s", "accel":"g", "velocity":"m/s", "displacement":"cm"},
+                            line_style = ["solid", "dashed"]):        
+        # Purpose: Plot the standard velocity and acceleration vs. displacement plots for all the drops
+        # TODO: Move this to the drop level and call the drop function here
+        # Set all of the line colors to black if hold is on
+        if not hold:
+            colors = ["black"] * 20
+            
+        # Loop over the drops and plot them
+        fig, axs = plt.subplots(nrows = 1, ncols = 1, figsize = (figsize[0], figsize[1]))
+
+        for i, drop in enumerate(self.drops):
+            
+            if not hold:
+                # Make a new figure every time
+                fig, axs = plt.subplots(nrows = 1, ncols = 1, figsize = (figsize[0], figsize[1]))
+
+            drop_units = drop.units
+
+            time = drop.impulse_df["Time"]
+            accel = drop.impulse_df["accel"]
+            vel = drop.impulse_df["velocity"]
+            disp = drop.impulse_df["displacement"]
+
+            # Convert the units
+            time = convert_time_units(time, drop_units["Time"], units["Time"])
+            accel = convert_accel_units(accel, drop_units["accel"], units["accel"])
+            disp = convert_length_units(disp, drop_units["displacement"], units["displacement"])
+
+            if drop_units["velocity"] != units["velocity"]:
+                raise ValueError("Conversion for velocity not implemented")
+            
+            axs.plot(accel, disp, color = colors[i], label= "acceleration", linestyle = line_style[0])
+            axs.plot(vel, disp, color = colors[i], label = "velocity", linestyle = line_style[1])
+
+            # label the axes
+            if hold and i == 0 or not hold:
+                axs.set_xlabel(f"Accleration ({units["accel"]})/Velocity ({units["velocity"]})")
+                axs.set_ylabel(f"Displacement ({units["displacement"]})")
+                
+                # Label the plot only with the file name if hold is on
+                if hold:
+                    axs.set_title(f"File: {self.file_name} Num Drops: {self.num_drops}")
+                else: 
+                    axs.set_title(f"File: {self.file_name} Drop id: {drop.file_drop_index}")
+                axs.invert_yaxis()
+
+            if legend:
+                axs.legend()
+

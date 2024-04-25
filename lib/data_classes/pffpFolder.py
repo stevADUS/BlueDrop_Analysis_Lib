@@ -7,6 +7,8 @@ import time
 from lib.data_classes.folder import Folder
 from lib.data_classes.pffpFile import pffpFile
 from lib.general_functions.general_function import create_folder_if_not_exists, progress_bar
+from lib.data_classes.exceptions import zeroLenError
+
 class pffpDataFolder(Folder):
     # Pupose: Hold data about a folder that contains a PFFP data
 
@@ -71,6 +73,22 @@ class pffpDataFolder(Folder):
 
         self.num_pffp_files = len(self.pffp_files)
 
+    def move_file_2_funky(self, file, funky_dir):
+        # Purpose: Move a file into the funky folder
+
+        # Construct the new file dir
+        funky_file_dir = os.path.join(funky_dir, file.file_name)
+        
+        # Move the file
+        shutil.move(file.file_dir, funky_dir)
+
+        # Update the file directory
+        file.file_dir = funky_file_dir
+
+        # Store the file in the funky file list and increment the list
+        self.pffp_funky_files.append(file)
+        self.num_funky_files = len(self.pffp_funky_files)
+
     def analyze_all_files(self, subfolder_dir = "no_drop_folder", use_pore_pressure = True, store_df = True ):
         # Purpose: Get the files that have drops in them
 
@@ -93,7 +111,7 @@ class pffpDataFolder(Folder):
         create_folder_if_not_exists(funky_dir)
 
         # Print progress bar label
-        print("\nProgress analysing drops...")
+        print("\nProgress finding files with drops...")
 
         for i, file in enumerate(self.pffp_files):
             
@@ -125,14 +143,8 @@ class pffpDataFolder(Folder):
 
                 # Check if the file is funky
                 if file.funky:
-                    funky_file_dir = os.path.join(funky_dir, file.file_name)
-                    
-                    shutil.move(file.file_dir, funky_dir)
-
-                    file.file_dir = funky_file_dir
-
-                    self.pffp_funky_files.append(file)
-                    self.num_funky_files +=1
+                    # Move the file to funky directory and do some housekeeping
+                    self.move_file_2_funky(file, funky_dir)
                 else:
                     # Store the drop files
                     self.pffp_drop_files.append(file)
@@ -147,7 +159,10 @@ class pffpDataFolder(Folder):
             # Print a progress bar
             progress_bar(i+1, self.num_pffp_files, time_left)
 
-        print("\nInitial analysis complete!")      
+        print("\nInitial analysis complete!") 
+
+        # Store the path to funky directory
+        self.funky_dir = funky_dir
 
     def process_drop_files(self):
         # Purpose: Process all of the drops in the files that have drops 
@@ -155,18 +170,36 @@ class pffpDataFolder(Folder):
         # Print progress bar label
         print("\nProgress processing drops in files...")
         # Loop over the files
+        num_files = len(self.pffp_drop_files)
         for i, file in enumerate(self.pffp_drop_files):
+            
             # Get an estimate for how much longer is left
             start_time= time.time()
 
-            # Process all the drops in that file
-            file.process_drops()
+            try:
+                # Process all the drops in that file
+                file.process_drops()
+            except zeroLenError as err:
+                # Print the error message
+                details= err.args[0]
+                # Print the error details
+                print("\n" + details["message"])
+                print("Criteria not met:", details["criteria"])
+                print(details["source"])
+                print("Moving file to funky folder")
+                # Move the file from the drop folder to the funk folder
+                self.move_file_2_funky(file, funky_dir=self.funky_dir)
+
+                # Remove the reference from the drop folder and in
+                self.pffp_drop_files.pop(i)
+                self.num_drop_files = len(self.pffp_drop_files)
 
             end_time= time.time()
             
-            time_left = (end_time - start_time) * (self.num_drop_files - (i+1))
+            # Set a min time in the case the calculation happens really quickly
+            time_left = max((end_time - start_time) * self.num_drop_files - (i+1), 1e-6)
             # Print a progress bar
-            progress_bar(i+1, self.num_drop_files, time_left)
+            progress_bar(i+1, num_files, time_left)
 
     def get_file_index_from_name(self):
         # TODO: Purpose: Given a file name get the index of that file in
