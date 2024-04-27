@@ -13,13 +13,14 @@ class pffpDataFolder(Folder):
     # Pupose: Hold data about a folder that contains a PFFP data
 
     # Init the input params and store them in DataFolder Instance
-    def __init__(self, folder_dir, pffp_id, calibration_factor_dir):
+    def __init__(self, folder_dir, pffp_id, calibration_factor_dir, survey_name = None):
         # init the parent class
         Folder.__init__(self, folder_dir)
 
         self.folder_dir = folder_dir # Store the folder directory
         self.pffp_id = pffp_id       # Store the PFFP id
         self.calibration_factor_dir = calibration_factor_dir # Directory containing the calibration factors for the PFFP
+        self.survey_name = survey_name # Name of the survey the data was collected during
 
         # Init variables that aren't defined
         self.num_pffp_files = "Not set"
@@ -79,9 +80,13 @@ class pffpDataFolder(Folder):
         # Construct the new file dir
         funky_file_dir = os.path.join(funky_dir, file.file_name)
         
-        # Move the file
-        shutil.move(file.file_dir, funky_dir)
-
+        # If the file doesn't already exist at that location
+        if not os.path.exists(funky_file_dir):
+            # Move the file
+            shutil.move(file.file_dir, funky_dir)
+        else:
+            print("{} already exists in {}".format(file.file_dir, funky_dir))
+            
         # Update the file directory
         file.file_dir = funky_file_dir
 
@@ -89,7 +94,9 @@ class pffpDataFolder(Folder):
         self.pffp_funky_files.append(file)
         self.num_funky_files = len(self.pffp_funky_files)
 
-    def analyze_all_files(self, subfolder_dir = "no_drop_folder", use_pore_pressure = True, store_df = True ):
+    def analyze_all_files(self, subfolder_dir = "no_drop_folder", use_pore_pressure = True, store_df = True,
+                          select_accel = ["2g_accel", "18g_accel", "50g_accel", "250g_accel"],
+                          debug = False ):
         # Purpose: Get the files that have drops in them
 
         # store_drop_df: Store the df if it's a drop
@@ -118,8 +125,11 @@ class pffpDataFolder(Folder):
             # Get an estimate for how much longer is left
             start_time= time.time()
 
+            if debug:
+                print(file.file_name)
+
             # Get the number of drops in the pffp file
-            file.analyze_file(use_pore_pressure, store_df = store_df)
+            file.analyze_file(use_pore_pressure, store_df = store_df, select_accel = select_accel)
 
             # Check if there's a drop in the file and append to the mask arr
             drop_in_file = file.check_drop_in_file()
@@ -140,7 +150,6 @@ class pffpDataFolder(Folder):
                 self.pffp_no_drop_files.append(file)
             else:
                 
-
                 # Check if the file is funky
                 if file.funky:
                     # Move the file to funky directory and do some housekeeping
@@ -171,7 +180,11 @@ class pffpDataFolder(Folder):
         print("\nProgress processing drops in files...")
         # Loop over the files
         num_files = len(self.pffp_drop_files)
-        for i, file in enumerate(self.pffp_drop_files):
+
+        # Dummy array to store the drop files so the original can be modified
+        dummy_drop_files = list.copy(self.pffp_drop_files)
+        files_2_pop = []
+        for i, file in enumerate(dummy_drop_files):
             
             # Get an estimate for how much longer is left
             start_time= time.time()
@@ -179,20 +192,13 @@ class pffpDataFolder(Folder):
             try:
                 # Process all the drops in that file
                 file.process_drops()
-            except zeroLenError as err:
-                # Print the error message
-                details= err.args[0]
-                # Print the error details
-                print("\n" + details["message"])
-                print("Criteria not met:", details["criteria"])
-                print(details["source"])
-                print("Moving file to funky folder")
+
+            except zeroLenError:
                 # Move the file from the drop folder to the funk folder
                 self.move_file_2_funky(file, funky_dir=self.funky_dir)
 
-                # Remove the reference from the drop folder and in
-                self.pffp_drop_files.pop(i)
-                self.num_drop_files = len(self.pffp_drop_files)
+                # Store the files
+                files_2_pop.append(i)
 
             end_time= time.time()
             
@@ -201,9 +207,19 @@ class pffpDataFolder(Folder):
             # Print a progress bar
             progress_bar(i+1, num_files, time_left)
 
+        files_2_pop = np.array(files_2_pop)
+        for i, file_index in enumerate(files_2_pop):
+            # Update the file index to account for the removed values
+            file_index = file_index - i
+
+            self.pffp_drop_files.pop(file_index)
+
+            # Update the number of drop files
+            self.num_drop_files = len(self.pffp_drop_files)
     def get_file_index_from_name(self):
         # TODO: Purpose: Given a file name get the index of that file in
             #  pffp_files list
             # pffp_no_drop list or pffp_drop list depending on where it is
         pass
 
+    

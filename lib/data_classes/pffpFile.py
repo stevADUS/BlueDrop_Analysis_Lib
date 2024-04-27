@@ -4,16 +4,18 @@ from lib.data_classes.BinaryFile import BinaryFile
 from lib.signal_processing.signal_function import find_drops, moving_average
 from lib.data_classes.dropClass import Drop # Class that is used to represent drops
 from lib.general_functions.general_function import convert_accel_units, convert_time_units, convert_length_units
+from lib.data_classes.exceptions import zeroLenError
 
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import matplotlib.pyplot as plt
+from operator import itemgetter
 
 class pffpFile(BinaryFile):
     # Purpose: To store information and modify a PFFP binary file
 
     # TODO: Add a time zone category and add that data to the datetime
-    def __init__(self, file_dir, calibration_params, sensor_units = ["g", "kPa", "min"]):
+    def __init__(self, file_dir, calibration_params, sensor_units = {"accel":"g", "pressure":"kPa", "Time":"min"}):
         BinaryFile.__init__(self, file_dir)
 
         # Store the calibration params fro converting from volts to engineering units
@@ -29,14 +31,15 @@ class pffpFile(BinaryFile):
         self.num_drops = "Not Checked" 
         
         self.df_stored = False
-
+        self.stored_concat_accel = False
         self.sensor_units = sensor_units
 
     def __str__(self):
         # Purpose: Return some information about the file
         return f"File Directory: {self.file_dir} \nNum Drops in file: {self.num_drops} \
         \nDrop Date: {self.datetime.date()} \nDrop Time: {self.datetime.time()} \
-        \ndf stored: {self.df_stored}"
+        \ndf stored: {self.df_stored}\
+        \nConcat accel stored: {self.stored_concat_accel}"
 
     @staticmethod
     def convert_acceleration_unit(df, columns, input_unit, output_unit):
@@ -117,7 +120,8 @@ class pffpFile(BinaryFile):
             raise ValueError("Onnly converison from psi to kPa implemented")
         return df
     
-    def analyze_file(self, use_pore_pressure = True, store_df = True, overide_water_drop = False):
+    def analyze_file(self, use_pore_pressure = True, store_df = True, overide_water_drop = False, 
+                     select_accel = ["2g_accel", "18g_accel", "50g_accel", "250g_accel"]):
         # Purpose: Analyzes a bin file, gets
         # number of drops in the file
         # peak location of the drops
@@ -137,7 +141,11 @@ class pffpFile(BinaryFile):
         # Load the file df - Might be able to only load the part of the files I want in the future
         # Skip some sections of the binary file and only load the sensor that I need
         # Need to convert to gravity units because that's what the find_drops is expecting
-        df = self.binary_2_sensor_df(acceleration_unit = self.sensor_units[0], pressure_unit = self.sensor_units[1], time_unit= self.sensor_units[2])
+        df = self.binary_2_sensor_df(acceleration_unit = self.sensor_units["accel"], pressure_unit = self.sensor_units["pressure"], time_unit= self.sensor_units["Time"])
+
+        # Stitch the accelerometers and store the values
+        # Don't use the 200g accel it's kind of sketchy sometimes
+        self.stitch_accelerometers(df, accel_labels = select_accel)
 
         # Init flag to track if the drop was checked using pressure sensor
         pressure_check_list = []
@@ -148,10 +156,11 @@ class pffpFile(BinaryFile):
             index_2_delete = []
 
             # Get the max deceleration and use 75% of that as the cutoff
-            min_height = min(0.75 * np.max(df["18g_accel"]), 2.8)
+            # min_height = max(0.75 * np.max(self.concat_accel), 2.8)
+            min_height = max(0.6 * np.max(self.concat_accel), 2)
 
             #TODO: For the time being just check the 18g sensor in the future multiple sens
-            peak_indexs, peak_info, num_accel_drops = find_drops(df["18g_accel"], min_peak_height=min_height, impact_time_tol = 0.03)
+            peak_indexs, peak_info, num_accel_drops = find_drops(self.concat_accel, min_peak_height=min_height, impact_time_tol = 0.03)
 
             # Select the times where the peak acceleration thinks drops occured
             time_peak_acceleration = np.array(df["Time"])[peak_indexs]
@@ -185,14 +194,14 @@ class pffpFile(BinaryFile):
 
             if num_accel_drops != num_pressure_drops:
                 print("\nNum accel drops:", num_accel_drops)
-                print("Nim pressure drops: ", num_pressure_drops)
+                print("Num pressure drops: ", num_pressure_drops)
                 print(f"Warning: Number of predicted drops should match {self.file_name}")
                 self.funky = True
             pressure_check_list.append(True)
             
         else:
             #TODO: For the time being just check the 18g sensor in the future multiple sens
-            peak_indexs, peak_info, num_accel_drops = find_drops(df["18g_accel"])
+            peak_indexs, peak_info, num_accel_drops = find_drops(self.concat_accel)
 
             # Select the times where the peak acceleration thinks drops occured
             time_peak_acceleration = np.array(df["Time"])[peak_indexs]
@@ -224,21 +233,47 @@ class pffpFile(BinaryFile):
             df = self.df
         else: 
             # Load the df
-            df = self.binary_2_sensor_df(acceleration_unit = self.sensor_units[0], pressure_unit = self.sensor_units[1], time_unit= self.sensor_units[2])
+            df = self.binary_2_sensor_df(acceleration_unit = self.sensor_units["accel"], pressure_unit = self.sensor_units["pressure"], time_unit= self.sensor_units["Time"])
         
         # display(df.head())
         # loop over the drops in the file
-        accel = df["18g_accel"]
+        accel = self.concat_accel
         time = df["Time"]
 
-        for drop in self.drops:           
+        raise_error = False
+        
+        for drop in self.drops:  
+            skip_integration = False
             # Try to trim the acceleration data and integrate it
+            # Do the try here than pass the error back up
+            try:
+                # Trim the acceleration data
+                drop.cut_accel_data(accel, time, input_units = {"accel":"g", "Time":"min"} )
 
-            # Trim the acceleration data
-            drop.cut_accel_data(accel, time, input_units = {"accel":"g", "Time":"min"} )
-                
-            # Integrate the drop
-            drop.integrate_accel_data()
+            except zeroLenError as err:
+                # Print the error message
+                details= err.args[0]
+
+                # Print the error details
+                print("\n" + details["message"])
+                print("Criteria not met:", details["criteria"])
+                print(details["source"])
+                print("Moving file to funky folder")
+
+                # set error flag but try to process other drops
+                raise_error = True
+                skip_integration = True
+
+            if not skip_integration:
+                # If no error caught for this drop do the integration
+                drop.integrate_accel_data()
+
+                # Set the flag 
+                drop.processed = True 
+
+        # Raise error so the file gets moved into the funky folder
+        if raise_error:
+            raise zeroLenError
 
     def check_drop_in_file(self):
         # Purpose: check if there's a drop in the file
@@ -263,6 +298,10 @@ class pffpFile(BinaryFile):
         tilt_labels = ["55g_x_tilt", "55g_y_tilt"]
         pressure_label = "pore_pressure"
 
+        time_unit = self.sensor_units["Time"]
+        accel_unit = self.sensor_units["accel"]
+        pressure_unit = self.sensor_units["pressure"]
+        
         if interactive:
             fig = make_subplots(rows = 3, cols = 1, shared_xaxes = True)
 
@@ -287,7 +326,7 @@ class pffpFile(BinaryFile):
                 )
 
             # Update xaxis properties
-            fig.update_xaxes(title_text=f"Time {self.sensor_units[2]}", row=3, col=1)
+            fig.update_xaxes(title_text="Time {time_unit}", row=3, col=1)
 
             # Update yaxis properties
             fig.update_yaxes(title_text="Acceleration (g)", row=1, col=1)
@@ -322,16 +361,14 @@ class pffpFile(BinaryFile):
                 axs[2].legend()
 
             # Label the y-axis
-            axs[0].set_ylabel(f"Acceleration [{self.sensor_units[0]}]")
-            axs[1].set_ylabel(f"Pressure [{self.sensor_units[1]}]")
-            axs[2].set_ylabel(f"Acceleration [{self.sensor_units[0]}]")
+            axs[0].set_ylabel(f"Acceleration [{accel_unit}]")
+            axs[1].set_ylabel(f"Pressure [{pressure_unit}]")
+            axs[2].set_ylabel(f"Acceleration [{accel_unit}]")
 
             # Label the x-axis
-            print(self.sensor_units[2])
-
-            axs[0].set_xlabel(f"Time [{self.sensor_units[2]}]")
-            axs[1].set_xlabel(f"Time [{self.sensor_units[2]}]")
-            axs[2].set_xlabel(f"Time [{self.sensor_units[2]}]")
+            axs[0].set_xlabel(f"Time [{time_unit}]")
+            axs[1].set_xlabel(f"Time [{time_unit}]")
+            axs[2].set_xlabel(f"Time [{time_unit}]")
 
             # Give the entire figure a label
             fig.suptitle(f"File Name: {self.file_name}")
@@ -374,15 +411,28 @@ class pffpFile(BinaryFile):
         # TODO: Move this to the drop level and call the drop function here
         # Set all of the line colors to black if hold is on
         if not hold:
-            colors = ["black"] * 20
+            colors = ["black"] * self.num_drops
             
         # Loop over the drops and plot them
-        fig, axs = plt.subplots(nrows = 1, ncols = 1, figsize = (figsize[0], figsize[1]))
 
+        first_processed_drop = -1
         for i, drop in enumerate(self.drops):
             
+            # If the processing for the drop is not done
+            if not drop.processed:
+                # Print the drop information
+                print(drop, "not finished being processed")
+
+                # Go to the next drop
+                continue
+            
+            # Increment the tracker for plotting
+            first_processed_drop+=1
+
             if not hold:
                 # Make a new figure every time
+                fig, axs = plt.subplots(nrows = 1, ncols = 1, figsize = (figsize[0], figsize[1]))
+            elif hold and first_processed_drop ==0:
                 fig, axs = plt.subplots(nrows = 1, ncols = 1, figsize = (figsize[0], figsize[1]))
 
             drop_units = drop.units
@@ -404,9 +454,13 @@ class pffpFile(BinaryFile):
             axs.plot(vel, disp, color = colors[i], label = "velocity", linestyle = line_style[1])
 
             # label the axes
-            if hold and i == 0 or not hold:
-                axs.set_xlabel(f"Accleration ({units["accel"]})/Velocity ({units["velocity"]})")
-                axs.set_ylabel(f"Displacement ({units["displacement"]})")
+            if hold and first_processed_drop == 0 or not hold:
+                accel_unit = units["accel"]
+                vel_unit = units["velocity"]
+                disp_unit = units["displacement"]
+
+                axs.set_xlabel(f"Acceleration ({accel_unit})/Velocity ({vel_unit})")
+                axs.set_ylabel(f"Displacement ({disp_unit})")
                 
                 # Label the plot only with the file name if hold is on
                 if hold:
@@ -418,3 +472,172 @@ class pffpFile(BinaryFile):
             if legend:
                 axs.legend()
 
+    def stitch_accelerometers(self, accel_df, accel_labels):
+        # Purpose: Stich acclerometers together to get the most resolved accelerations
+        res_dict = {"2g_accel":1.7, "18g_accel": 18, "50g_accel":50, "200g_accel":200, "250g_accel":250}
+        
+        resolutions = itemgetter(*accel_labels)(res_dict)
+        df = accel_df[accel_labels]
+
+        # NOTE: Assumes that the accel labels and the max sensor values are in the same order
+        series = df.apply(self.get_tightest_sensor, axis = 1, args = (resolutions,accel_labels,))
+        self.concat_accel = series
+        self.stored_concat_accel = True
+
+    @staticmethod
+    def get_tightest_sensor(row, resolutions, labels):
+        value = row.max()
+
+        # Filter out resolutions smaller than the value
+        valid_resolutions = [res for res in resolutions if res >= value]
+
+        # If all resolutions are greater than the value, use the smallest resolution
+        if not valid_resolutions:
+            closest_resolution = min(resolutions)
+        else:
+            closest_resolution = min(valid_resolutions, key=lambda x: abs(x - value))
+        
+        # Get the index of the closest resolution
+        index = resolutions.index(closest_resolution)
+
+        # Get the column the closest data is in
+        col = labels[index] 
+            
+        return row[col]
+    
+    def process_funky_files(self, debug = False, interactive = True, figsize = [12,8], legend = False):
+        # Purpose: Manually process funky files
+        
+        # Plot the data
+        self.quick_view(interactive=interactive, figsize= figsize, legend = legend)
+                            
+        for drop in self.drops:
+            # If the drop is processed skip it
+            if  drop.processed:
+                continue
+
+            # Else the drop needs some indices
+            print(drop)
+            allowed_input_type = ["Time", "index", "skip"]
+
+
+            index_dict = drop.drop_indices.copy()      
+            
+            for key, value in index_dict.items():
+                if not value is None:
+                    continue
+            
+                print("Need {} ".format(key))
+                # Get the type of the input allow users to enter a time or a index
+                input_type_string ="Enter {} or {} or {}\n".format(allowed_input_type[0],
+                                                                    allowed_input_type[1],
+                                                                    allowed_input_type[2])
+                
+                input_type = input(input_type_string)
+                
+                if input_type == "":
+                    print("Escaping from function")
+                    return
+                
+                while not input_type in allowed_input_type:
+                    input_type = input(input_type_string)
+                    print("{} is not an allowed input. Only {}, {} or {} is allowed\n".format(input_type, allowed_input_type[0], allowed_input_type[1], allowed_input_type[2]))
+
+                    if input_type == "":
+                        print("Escaping from function")
+                        return None
+                
+                
+                if input_type == allowed_input_type[0]:
+                    
+                    # Get the limiting time by converting the max time to the file units so it matches the figure
+                    limit = convert_time_units(drop.time.max(), drop.units["Time"], self.sensor_units["Time"] ) 
+                    
+                    if debug:
+                        print("time limit", limit)
+                    
+                    # Flag to track if the input is good
+                    good_input = False
+                    
+                    # Check that the val is a float
+                    while not good_input:
+                        print("\nInput must be a decimal number and less than {}\
+                            \nFunction assumes the time is in {}".format(limit, self.sensor_units["Time"]))
+                        
+                        # Get the string input and convert it to a float
+                        try:
+                            input_val = input("Enter a time:\n")
+                            
+                            if input_val == "":
+                                print("Escaping from process funky drops without completion")
+                                return None
+                            
+                            val = float(input_val)
+                        except ValueError as err:
+                            print(err)
+                            good_input = False
+                        
+                            # Go to the next iteration because input wasn't valid
+                            continue
+                        
+                        # Check that the entered time is within bounds
+                        if val >= 0 and val < limit:
+                            good_input = True
+
+                        
+                    # Convert the units back to the drop time units
+                    val = convert_time_units(val, self.sensor_units["Time"], drop.units["Time"])
+                    
+                    # Find the index that corresponds to the time closest to the input time
+                    index = np.where(val <= drop.time)[0][0]
+                elif input_type == allowed_input_type[1]:
+                    index =0.0
+
+                    good_input= False
+                    while not good_input:
+                        print("\nInput must be an integer number (no decimal points) and less than {} \
+                            \nand greater than or equal to 0 ".format(0, len(drop.time)-1))
+                        try:
+                            # Try to convert the input to an integer
+                            index = input("Enter an integer index")
+
+                            if index == "":
+                                print("Escaping from process funky drops without completion")
+                                return None 
+
+                            index = int(index)
+
+                        except ValueError as err:
+                            print(err)
+                            good_input = False
+                            
+                            continue
+                        # Check that the integer is positive and inside the bounds of the arr
+                        if index <=len(drop.time)-1 and index >=0:
+                            good_input = True
+                
+                elif input_type == allowed_input_type[2]:
+                    # If the file can be left as move to the next drop
+                    continue
+                
+                integration_type = "None"
+                integration_ans = ["y", "n"]
+                while not integration_type in integration_ans:
+                    integration_type = input("Impulse Integration? (y or n)")
+                    
+                    if integration_type == "":
+                        print("Escaping from the process funky drops without completion" )
+                        return
+                    
+                    if integration_type == integration_ans[0]:
+                        drop.impulse_integration = True
+                    elif integration_type == integration_ans[1]:
+                        drop.impulse_integration = False
+                    
+
+                # set the value into the dict
+                drop.drop_indices[key] = index
+
+                # drop.indices_found = True 
+                if debug:
+                    print("Index", index)

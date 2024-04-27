@@ -34,6 +34,9 @@ def moving_average(data, window_size):
     # data: Data that should be smoothed/averaged
     # window_size: Number of values to consider +/- in the averaging
 
+    # Convert the data to np array
+    data = np.array(data)
+    
     averaged_data = np.cumsum(data)
     averaged_data[window_size:] = averaged_data[window_size:] - averaged_data[:-window_size]
     return averaged_data[window_size-1:]/window_size

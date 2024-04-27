@@ -21,8 +21,17 @@ class Drop:
         self.peak_info         = peak_info         # Store some information on the peak
         self.peak_index = peak_index
         self.water_drop = None                    # Store if the drop is a water drop
-        self.drop_indices = None
-
+        self.processed = False                    # Tracks if the drop was processed (ie. all the information to resolve it's start and end was collected)
+        self.manual_processed = False             # Tracks if the drop was processed manually
+        self.indices_found = False                # Tracks if the indices were all found
+        self.impulse_integration = True           # Use impulse integration (old method of integrating the function)
+        # init Dict to hold drop indices
+        self.drop_indices = {
+                "release_index"      : None,
+                "start_impulse_index": None,
+                "end_impulse_index"  : None
+            }
+        
     def __str__(self):
         # Purpose: Outputs information about the drops
         return f"----- Drop Info ----- \nContaining file: {self.containing_file} \nFile Drop Index: {self.file_drop_index} \nWater Drop: {self.water_drop}\
@@ -56,26 +65,48 @@ class Drop:
 
         # Catch if there isn't a release
         self.check_arr_zero_length(release_index, {"message":"Point meeting criteria not found", "criteria":"release point", \
-                                                    "source":"drop id: {self.file_drop_index} in {self.containing_file}"})
+                                                    "source":f"drop id: {self.file_drop_index} in {self.containing_file}"})
 
         #Otherwise Store the release index
         return release_index[-1]
 
-    def get_impulse_start(self, accel, time, time_tol = 0.005, sample_frq = 120_000, gradient_tol = 600, window_size = 100, debug = False):
+    def get_impulse_start(self, accel, time, time_tol = 0.005, sample_frq = 120_000, gradient_tol = 400, accel_lim = [5.8, 25],
+                          window_size = 100, debug = False):
+
         # Purpose: Get the start of the impulse
 
         # Using the gradient of the acceleration to find the location of impact
         # Search time tolerance minutes before the impact for the start of the impulse
         
-
-        start_index = self.peak_index - int(time_tol * sample_frq)
+        # Make sure that the start index doesn't go below zero
+        start_index = max(self.peak_index - int(time_tol * sample_frq), 0)
         if debug:
             store_time = time
             store_accel = accel
-            print(self.containing_file)
+            # print(self.containing_file)
+            # print("accel", accel)
+            # print("time", time)
+            # plt.plot(time, accel)
+
         # Only search from the time tolerance to the peak
-        time = np.array(time[start_index:self.peak_index])
-        accel = np.array(accel[start_index:self.peak_index])
+        # time = np.array(time[start_index:self.peak_index])
+        # accel = np.array(accel[start_index:self.peak_index])
+
+        time = time[start_index:self.peak_index]
+        accel = accel[start_index:self.peak_index]
+
+        max_val = accel.max()
+
+        # In the case of really high accelerations the smoothig done below bleads over and a higher gradient tolerance is needed
+        if max_val > accel_lim[0] and max_val < accel_lim[1]:
+            window_size = 7
+            scale =  250 #1000
+            gradient_tol = accel.max() * scale
+
+        elif max_val >= accel_lim[1]: # Conditions for higher accelerations
+            window_size = 7
+            scale =  1000
+            gradient_tol = accel.max() * scale 
 
         # Window average the acceleration and the time
         smoothed_time= moving_average(time, window_size)
@@ -84,30 +115,34 @@ class Drop:
         jerk = np.gradient(smoothed_accel, smoothed_time)
 
         if debug:
-            plt.plot(smoothed_time, jerk)
-            
+            plt.plot(smoothed_time, smoothed_accel, label = "smoothed")
+            plt.plot(time, accel, label = "original")
+            plt.legend()
+            plt.show()
+
         # Get the points where the gradient meets this criteria
         smoothed_index =  np.where(jerk>gradient_tol)[0]
-
         self.check_arr_zero_length(smoothed_index, {"message":"Point meeting criteria not found", "criteria":"start impulse point", \
-                                                    "source":"drop id: {self.file_drop_index} in {self.containing_file}"})
+                                                    "source":f"drop id: {self.file_drop_index} in {self.containing_file}"})
         smoothed_index = smoothed_index[0]
-
         # Convert the index of the smoothed data back to the index of the original data
+
         # Selecting the last index where time is less than the selected smooth time
         index = np.where(time < smoothed_time[smoothed_index])[0][-1]
-        
+        # accel_cutoff_index = np.where()
+
         # Offset the index for the initial arr cut
         index = index + start_index 
 
         if debug:
-            fig, axs = plt.subplots(ncols = 1, nrows = 2)
-            print(index)
-            axs[0].plot(time, accel)
+            print("start accel value", accel[index])
 
-            axs[0].scatter(time[index-start_index], accel[index-start_index], s=10, color = "red")
-            axs[1].plot(smoothed_time, jerk)
-            plt.show()
+            # fig, axs = plt.subplots(ncols = 1, nrows = 2)
+            # print(index)
+            # axs[0].plot(time, accel)
+            # axs[0].scatter(time[index-start_index], accel[index-start_index], s=10, color = "red")
+            # axs[1].plot(smoothed_time, jerk)
+            # plt.show()
 
         # Return the first index that meets that criteria
         return index
@@ -115,11 +150,15 @@ class Drop:
 
     def get_impulse_end(self, accel, low_tol = 0.95, high_tol=1.05):
         # Purpose: Get the end of the impulse
-        index = np.where((accel[self.peak_index:]> low_tol) & (accel[self.peak_index:] < high_tol))[0]
+        # index = np.where((accel[self.peak_index:]> low_tol) & (accel[self.peak_index:] < high_tol))[0]
+        index = np.where(accel[self.peak_index:] < high_tol)[0]
 
         self.check_arr_zero_length(index, {"message":"Point meeting criteria not found", "criteria":"peak at impulse end", \
                                                      "source":f"drop id: {self.file_drop_index} in {self.containing_file}"})
-        return self.peak_index + index[0]
+        # Choose the second point
+        point_index = 1
+
+        return self.peak_index + index[point_index]
     
     def cut_accel_data(self, accel, time, input_units = {"accel":"g", "Time":"min"}):
         # Purpose: Store the sensor data only for where the drop is selected to be
@@ -127,25 +166,47 @@ class Drop:
         # Store the units of the acceleration and time
         self.units = input_units
 
+        # Store the time in the drop
+        self.time = convert_time_units(time, input_unit = self.units["Time"], output_unit = "s")
+
+        # Change the time units
+        self.units["Time"] = "s"
+
         # Get the end of the impulse
         end_drop_index = self.get_impulse_end(accel, low_tol=0.95, high_tol = 1.05)
-
-        release_index = self.find_release(accel, accel_offset =1, height_tol = 0.6, lower_accel_bound=0.95, upper_accel_bound=1.15)
 
         # Get the start of the impulse
         start_drop_index = self.get_impulse_start(accel, time)
 
-        # Convert the time units to seconds
-        time = convert_time_units(time, input_unit = self.units["Time"], output_unit = "s")
-              
-        # df's store using the original indices. ie. the times and accelerations have the same indices as they had in the full arrays
-        # Store the indices for later use (Stored in sequential order)
-        self.drop_indices = {
-            "release_index"      : release_index,
-            "start_impulse_index": start_drop_index,
-            "end_impulse_index"  : end_drop_index
-        }
+        # Get the release index of the impulse
+        # This often fails becasue drops are too close the beginning of the file, so try it 
+        try: 
+            release_index = self.find_release(accel, accel_offset =1, height_tol = 0.6, lower_accel_bound=0.95, upper_accel_bound=1.15)
+        
+        # If it fails due to not being found, catch the error the other indices then raise the error again
+        except zeroLenError as err:
+            release_index = None
 
+            # df's store using the original indices. ie. the times and accelerations have the same indices as they had in the full arrays
+            # Store the indices for later use (Stored in sequential order)
+            self.drop_indices["release_index"] = release_index
+            self.drop_indices["start_impulse_index"] = start_drop_index
+            self.drop_indices["end_impulse_index"] = end_drop_index
+
+            print("Release not found ")
+            print(type(err))
+            raise err
+        
+        # Store the time that's been calculted in seconds
+        time = self.time
+
+        # In the case finding thee results doesn't fail set the points
+        self.drop_indices["release_index"] = release_index
+        self.drop_indices["start_impulse_index"] = start_drop_index
+        self.drop_indices["end_impulse_index"] = end_drop_index
+
+        # Track that the indices were found
+        self.indices_found = True
 
         # Store from the release point until the end of the drop
         whole_drop_accel= accel[release_index:end_drop_index]
@@ -168,6 +229,7 @@ class Drop:
         })
 
     def integrate_accel_data(self):
+        # TODO: Update this so that the impulse df is 
         # Purpose: Integrate the impulse and store in impulse df
 
         # Temp storage for the df
@@ -193,7 +255,7 @@ class Drop:
         whole_df["displacement"] = whole_displacement
 
         # Store the info in the df
-        self.whole_drop_df = whole_df   
+        # self.whole_drop_df = whole_df   
         
         # Temp storage for the df
         impulse_df = self.impulse_df       
@@ -221,13 +283,14 @@ class Drop:
         impulse_df["velocity"]     = impulse_velocity
         impulse_df["displacement"] = impulse_displacment
 
-        # Store the df
-        self.impulse_df = impulse_df
         # Update the acceleration units
         self.units["accel"] = "m/s^2"
         self.units["velocity"] = "m/s"
         self.units["displacement"] = "m"
 
+        # Mark the drop processed
+        self.processed = True
+        
     def quick_view_impulse(self, interactive = True, figsize= [12, 8], legend = False):
         # Purpose: Provide a quick view of impulse
  
@@ -301,11 +364,13 @@ class Drop:
             axs[0].set_xlabel(f"Time [{time_units}]")
             axs[1].set_xlabel(f"Time [{time_units}]")
             axs[2].set_xlabel(f"Time [{time_units}]")
+            print(time_units)
 
             # Give the entire figure a label
             fig.suptitle(f"File drop index: {self.file_drop_index}")
 
             plt.tight_layout()
+
             plt.show()
 
     def quick_view_release(self, interactive = True, figsize = [12, 8], legend = False):
@@ -388,6 +453,24 @@ class Drop:
             plt.tight_layout()
             plt.show()
 
-    def concate_accelerations(self):
-        # Purpose: Tie the accelerometers together where they max out
-        pass
+    def quick_view_impulse_selection(self, offset = 20, legend = True, draw_line = True, line_val = 0):
+        start = self.drop_indices["start_impulse_index"] - offset
+        end = self.drop_indices["end_impulse_index"]
+
+        plt.plot(self.whole_drop_df["Time"].loc[start:end], self.whole_drop_df["accel"].loc[start:end], color = "blue", label= "release")
+        plt.scatter(self.impulse_df["Time"], self.impulse_df["accel"], color = "red", label = "impulse")
+
+        time_units = self.units["Time"]
+        accel_units = self.units["accel"]
+
+        plt.xlabel(f" Time ({time_units}) ")
+        plt.ylabel(f"Acceleration ({accel_units})")
+
+        if draw_line:
+            plt.axhline(y = line_val)
+        if legend:
+            plt.legend()
+        
+        plt.show()
+
+        
