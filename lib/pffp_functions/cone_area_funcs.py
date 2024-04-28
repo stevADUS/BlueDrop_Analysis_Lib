@@ -1,62 +1,75 @@
 #Standard imports 
 import numpy as np
+import pandas as pd
 
 # From local library
-from basic_geometry_funcs import calcCircleArea, calcConeLateralSurfaceArea, calcCylinderSurfaceArea, calcParabolaSurfaceArea
+from lib.pffp_functions.basic_geometry_funcs import calcCircleArea, calcConeLateralSurfaceArea, calcCylinderSurfaceArea, calcParabolaSurfaceArea
+from lib.general_functions.global_constants import ALLOWED_TIP_TYPES_LIST
 
-def calcFFPContactArea(penetrationDepth,  maxLength, areaCalcType, tipType, baseRadius = 4.375, coneTipRadius = 0.22, coneTipHeight = 7.55, radius_coeff = 2.4184):
-    # Function calls the required functions to calculate the generated area for a cone
-    # Inputs:
-        # penetrationDepth: Array of depths the FFP has penetrated, [m]
-        # maxLength: max length of penetration before radius become constant, [cm]
-        # areaCalcType: "mantle or projected"
-        # tipType: blunt or cone tip type       
-        # baseRadius: Base radius of the cone and blunt tip, [cm]
-        # coneTipRadius: Tip radius of the cone??, [cm]
-        # coneTipHeight: height of the cone, [cm]
-        # radius_coeff: coefficient from the parabola fit the parabolic cone tip
-        
-    # Convert penetration depth to centimeters [cm]
-    penetrationDepth = penetrationDepth * 100 #[cm]
+
+def calc_pffp_contact_area(penetrationDepth, areaCalcType, tipType, tipProps, tip_val_col):
+    """
+    Purpose: Wrapper for the contact area functions for all cones
+    NOTE: Assumes a consistent set of units
+    Inputs:
+        penetrationDepth: Array of depths the FFP has penetrated, 
+        areaCalcType: "mantle or projected"
+        tipType: blunt or cone tip type       
+        tipProps: Holds the tip properties that are required for the area calculation
+    """
+
+    if not isinstance(tipProps, pd.DataFrame):
+        raise TypeError("Tip props should be a dataframe of the tip properties") 
+    
+    # Unpack the general tip properties
+    tipHeight = tipProps.loc[tipProps["Properties"] == "tip_height"][tip_val_col].iloc[0]
+    baseRadius = tipProps.loc[tipProps["Properties"] == "base_radius"][tip_val_col].iloc[0] 
 
     # Calc area for cone tip
-    if tipType == "cone":
-        area = calcFFPConeContactArea(penetrationDepth, maxLength, baseRadius, coneTipRadius, coneTipHeight, areaCalcType)
+    match tipType:
+        case "cone":
+            # Unpack the cone properties
+            coneTipRadius = tipProps.loc[tipProps["Properties"] == "tip_radius"][tip_val_col].iloc[0] 
 
-     # Calc area for blunt tip
-    elif tipType == "blunt":
-        area = calcFFPBluntContactArea(penetrationDepth, maxLength, baseRadius, areaCalcType)
-    
-    elif tipType == "parabola":
-        area = calcParabolicContactArea(penetrationDepth, maxLength, areaCalcType, radius_coeff)
+            area = calcFFPConeContactArea(penetrationDepth, tipHeight, baseRadius, coneTipRadius,  areaCalcType)
 
-    # Convert to m^2
-    return area/1e4 #[m^2]
+        # Calc area for blunt tip
+        case "blunt":
+            area = calcFFPBluntContactArea(penetrationDepth, tipHeight, baseRadius, areaCalcType)
+        
+        case "parabola":
+            # Unpack the radius coefficient
+            radius_coeff = tipProps.loc[tipProps["Properties"] == "radius_coeff"][tip_val_col].iloc[0]
 
-#TODO: Could use a mask to calc the values for the whole array that is below the maxLength and init array for the part that is above
+            area = calcParabolicContactArea(penetrationDepth, tipHeight, areaCalcType, radius_coeff)
+        case _: 
+            raise ValueError("{} is not a valid contact area calculation type\n \
+                             Valid options are {}".format(tipType, ALLOWED_TIP_TYPES_LIST))
+    return area 
 
-def calcFFPConeContactArea(penetrationDepth, maxLength, baseRadius, coneTipRadius, coneTipHeight, areaCalcType):
+#TODO: Could use a mask to calc the values for the whole array that is below the tipHeight and init array for the part that is above
+
+def calcFFPConeContactArea(penetrationDepth, tipHeight, baseRadius, coneTipRadius, areaCalcType):
     # Function calculates the contact area for the cone top of the FFP
 
     # penetrationDepth: Array of penetration depth values
-    # maxLength: Max length before the lateral area of the FFP is considered
     # baseRadius: Radius of the Cone at the base (Circular side)
     # coneTipRadius: Radius of the cone tip (is not zero)
-    # coneTipHeight: Height of the cone when measured normal to the circular base
+    # tipHeight: Height of the cone when measured normal to the circular base
     # areaCalcType: Selection of mantle or projected
 
     # Init array to store area
     area = np.ones(len(penetrationDepth))
 
     # Calc cone side slope
-    coneSideSlope = (baseRadius-coneTipRadius)/coneTipHeight
+    coneSideSlope = (baseRadius-coneTipRadius)/tipHeight
 
     for i, depth in enumerate(penetrationDepth):
         
-        # if the depth is greater than the maxLength of the cone
-        if depth > maxLength:
-            # decrease the depth used in the calculation to the maxLength
-            depth = maxLength
+        # if the depth is greater than the tipHeight of the cone
+        if depth > tipHeight:
+            # decrease the depth used in the calculation to the tipHeight
+            depth = tipHeight
         
         # Calc the radius
         radius = coneTipRadius + depth * coneSideSlope
@@ -75,18 +88,18 @@ def calcFFPConeContactArea(penetrationDepth, maxLength, baseRadius, coneTipRadiu
 
     return area
 
-def calcFFPBluntContactArea(penetrationDepth, maxLength, baseRadius, areaCalcType):
+def calcFFPBluntContactArea(penetrationDepth, tipHeight, baseRadius, areaCalcType):
 
     # init array to store area calcs
     area = np.zeros(len(penetrationDepth))
 
     for i, depth in enumerate(penetrationDepth):
-        # if the depth is greater than the maxLength of the blunt cylinder
-        if depth > maxLength:
-            # decrease the depth used in the calculation to the maxLength
-            depth = maxLength
+        # if the depth is greater than the tipHeight of the blunt cylinder
+        if depth > tipHeight:
+            # decrease the depth used in the calculation to the tipHeight
+            depth = tipHeight
         
-        # Check the maxLength in one line than calc the area in one line instead of looping
+        # Check the tipHeight in one line than calc the area in one line instead of looping
         # radius is constant for cylinder
         radius = baseRadius
 
@@ -102,10 +115,9 @@ def calcFFPBluntContactArea(penetrationDepth, maxLength, baseRadius, areaCalcTyp
         else: 
             return ValueError("areaCalcType must be mantle or projected. Currently is: {}".format(areaCalcType))
         
-    # Might need to convert this to m^2
     return area
 
-def calcParabolicContactArea(penetrationDepth, maxLength, areaCalcType, radius_coeff = 2.4184):
+def calcParabolicContactArea(penetrationDepth, tipHeight, areaCalcType, radius_coeff = 2.4184):
     # Purpose: Calc the contact area for the parabolic type of  the bluedrop
     # radius_coeff: The coefficient required to calc the radius of the parabola from the depth of penetration
     #               radius = \sqrt{depth/a} where a is from the parabola eqn. depth = a * radius^{2}
@@ -115,9 +127,9 @@ def calcParabolicContactArea(penetrationDepth, maxLength, areaCalcType, radius_c
 
     for i, depth in enumerate(penetrationDepth):
         #if the depth  is greater than the max length of the parabolic  cylinder
-        if depth  > maxLength:
-            # decrease the depth  used in the calculatiion to the maxLength
-            depth = maxLength
+        if depth  > tipHeight:
+            # decrease the depth used in the calculatiion to the tipHeight
+            depth = tipHeight
 
         # calc the radius
         radius = np.sqrt(radius_coeff * depth) 
@@ -130,3 +142,5 @@ def calcParabolicContactArea(penetrationDepth, maxLength, areaCalcType, radius_c
         elif areaCalcType == "projected":
             #if selected calc projected area
             area[i] = calcCircleArea(radius)
+    
+    return area

@@ -15,4 +15,7 @@ class File:
     def get_file_name(self):
         # Purpose: Get a file name from a directory
         return os.path.basename(self.file_dir)
-    
+
+if __name__ == "__main__":
+    # Add some testing here
+    pass

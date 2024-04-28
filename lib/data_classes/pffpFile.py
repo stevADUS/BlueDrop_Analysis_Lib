@@ -10,6 +10,7 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import matplotlib.pyplot as plt
 from operator import itemgetter
+import time
 
 class pffpFile(BinaryFile):
     # Purpose: To store information and modify a PFFP binary file
@@ -85,6 +86,7 @@ class pffpFile(BinaryFile):
         # Local variable for the calibration factors
         params = self.calibration_params
 
+        # Search through the senor names and get the offset and scale for that sensor
         for value in params['Sensor']:
             offset = params[params['Sensor'] == value].iloc[0, 1]
             scale = params[params['Sensor'] == value].iloc[0, 2]
@@ -275,6 +277,34 @@ class pffpFile(BinaryFile):
         if raise_error:
             raise zeroLenError
 
+    def manually_process_drop(self, drop):
+        # Purpose: Analyze drops that were manually processed
+
+        # Check if the df is stored
+        if self.df_stored:
+            # Temporarily store the df
+            df = self.df
+        else: 
+            # Load the df
+            df = self.binary_2_sensor_df(acceleration_unit = self.sensor_units["accel"], pressure_unit = self.sensor_units["pressure"], time_unit= self.sensor_units["Time"])
+        
+        # display(df.head())
+        # loop over the drops in the file
+        accel = self.concat_accel
+        time = df["Time"]
+
+        if not drop.indices_found:
+            raise IndexError("Indices aren't all found yet")
+        
+        if not drop.manually_processed:
+            raise ValueError("Only use this function for drops that had there indices manually selected")
+        
+        drop.cut_accel_data(accel, time, input_units = {"accel":"g", "Time":"min"} )
+        drop.integrate_accel_data()
+
+        # Set the flag 
+        drop.processed = True 
+        
     def check_drop_in_file(self):
         # Purpose: check if there's a drop in the file
         if self.num_drops > 0:
@@ -291,6 +321,7 @@ class pffpFile(BinaryFile):
         else:
             # Otherwise use the stored df
             df = self.df
+
         # generate the figure object
         time = df["Time"]
         
@@ -337,7 +368,7 @@ class pffpFile(BinaryFile):
             fig.update_layout(height = figsize[1] *100, width = figsize[0] *100,
                             title_text=f"File Name: {self.file_name}")
 
-            # Turn off interactivity
+            # Show the plot interactivity
             fig.show()
         else:
             # Use matplotlib
@@ -505,139 +536,131 @@ class pffpFile(BinaryFile):
             
         return row[col]
     
-    def process_funky_files(self, debug = False, interactive = True, figsize = [12,8], legend = False):
-        # Purpose: Manually process funky files
+    def manual_indices_selection(self, drop, debug = False, interactive = True, figsize = [12,8], legend = False, lag = 0.1):
+        # Purpose: Manually select indices for drops
         
+        # Print information about the drop
+        print(drop)
+
+        print("Plotting file data...")
         # Plot the data
         self.quick_view(interactive=interactive, figsize= figsize, legend = legend)
-                            
-        for drop in self.drops:
-            # If the drop is processed skip it
-            if  drop.processed:
+        
+        time.sleep(lag)                            
+
+        allowed_input_type = ["Time", "index", "skip"]
+        index_dict = drop.drop_indices.copy()      
+        
+        for key, value in index_dict.items():
+            if not value is None:
                 continue
-
-            # Else the drop needs some indices
-            print(drop)
-            allowed_input_type = ["Time", "index", "skip"]
-
-
-            index_dict = drop.drop_indices.copy()      
+        
+            print("--------- Need {} ---------".format(key))
+            # Get the type of the input allow users to enter a time or a index
+            input_type_string ="Enter {} or {} or {}\n".format(allowed_input_type[0],
+                                                                allowed_input_type[1],
+                                                                allowed_input_type[2])
             
-            for key, value in index_dict.items():
-                if not value is None:
-                    continue
+            input_type = input(input_type_string)
             
-                print("Need {} ".format(key))
-                # Get the type of the input allow users to enter a time or a index
-                input_type_string ="Enter {} or {} or {}\n".format(allowed_input_type[0],
-                                                                    allowed_input_type[1],
-                                                                    allowed_input_type[2])
-                
+            if input_type == "":
+                print("Escaping from manual_indices_selection without completion")
+                return
+            
+            while not input_type in allowed_input_type:
                 input_type = input(input_type_string)
-                
+                print("{} is not an allowed input. Only {}, {} or {} is allowed\n".format(input_type, allowed_input_type[0], allowed_input_type[1], allowed_input_type[2]))
                 if input_type == "":
                     print("Escaping from function")
+                    return None
+            
+            if input_type == allowed_input_type[0]:
+                
+                # Get the limiting time by converting the max time to the file units so it matches the figure
+                limit = convert_time_units(drop.time.max(), drop.units["Time"], self.sensor_units["Time"] ) 
+                
+                if debug:
+                    print("time limit", limit)
+                
+                # Flag to track if the input is good
+                good_input = False
+                
+                # Check that the val is a float
+                while not good_input:
+                    print("\nInput must be a decimal number and less than {}\
+                        \nFunction assumes the time is in {}".format(limit, self.sensor_units["Time"]))
+                    
+                    # Get the string input and convert it to a float
+                    try:
+                        input_val = input("Enter a time:\n")
+                        
+                        if input_val == "":
+                            print("Escaping from manual_indices_selection without completion")
+                            return None
+                        
+                        val = float(input_val)
+                    except ValueError as err:
+                        print(err)
+                        good_input = False
+                    
+                        # Go to the next iteration because input wasn't valid
+                        continue
+                    
+                    # Check that the entered time is within bounds
+                    if val >= 0 and val < limit:
+                        good_input = True
+                    
+                # Convert the units back to the drop time units
+                val = convert_time_units(val, self.sensor_units["Time"], drop.units["Time"])
+                
+                # Find the index that corresponds to the time closest to the input time
+                index = np.where(val <= drop.time)[0][0]
+            elif input_type == allowed_input_type[1]:
+                index =0.0
+                good_input= False
+                while not good_input:
+                    print("\nInput must be an integer number (no decimal points) and less than {} and greater than or equal to 0".format(0, len(drop.time)-1))
+                    try:
+                        # Try to convert the input to an integer
+                        index = input("Enter an integer index")
+                        if index == "":
+                            print("Escaping from manual_indices_selection without completion")
+                            return None 
+                        index = int(index)
+                    except ValueError as err:
+                        print(err)
+                        good_input = False
+                        
+                        continue
+                    # Check that the integer is positive and inside the bounds of the arr
+                    if index <=len(drop.time)-1 and index >=0:
+                        good_input = True
+            
+            elif input_type == allowed_input_type[2]:
+                # If the file can be left as move to the next drop
+                continue
+            
+            # Checking if 
+            integration_type = "None"
+            integration_ans = ["y", "n"]
+            while not integration_type in integration_ans:
+                integration_type = input("Impulse Integration? (y or n)")
+                
+                if integration_type == "":
+                    print("Escaping from the manual_indices_selection without completion" )
                     return
                 
-                while not input_type in allowed_input_type:
-                    input_type = input(input_type_string)
-                    print("{} is not an allowed input. Only {}, {} or {} is allowed\n".format(input_type, allowed_input_type[0], allowed_input_type[1], allowed_input_type[2]))
-
-                    if input_type == "":
-                        print("Escaping from function")
-                        return None
+                if integration_type == integration_ans[0]:
+                    drop.only_impulse = True
+                elif integration_type == integration_ans[1]:
+                    drop.only_impulse = False
                 
-                
-                if input_type == allowed_input_type[0]:
-                    
-                    # Get the limiting time by converting the max time to the file units so it matches the figure
-                    limit = convert_time_units(drop.time.max(), drop.units["Time"], self.sensor_units["Time"] ) 
-                    
-                    if debug:
-                        print("time limit", limit)
-                    
-                    # Flag to track if the input is good
-                    good_input = False
-                    
-                    # Check that the val is a float
-                    while not good_input:
-                        print("\nInput must be a decimal number and less than {}\
-                            \nFunction assumes the time is in {}".format(limit, self.sensor_units["Time"]))
-                        
-                        # Get the string input and convert it to a float
-                        try:
-                            input_val = input("Enter a time:\n")
-                            
-                            if input_val == "":
-                                print("Escaping from process funky drops without completion")
-                                return None
-                            
-                            val = float(input_val)
-                        except ValueError as err:
-                            print(err)
-                            good_input = False
-                        
-                            # Go to the next iteration because input wasn't valid
-                            continue
-                        
-                        # Check that the entered time is within bounds
-                        if val >= 0 and val < limit:
-                            good_input = True
+            # set the value into the dict
+            drop.drop_indices[key] = index
 
-                        
-                    # Convert the units back to the drop time units
-                    val = convert_time_units(val, self.sensor_units["Time"], drop.units["Time"])
-                    
-                    # Find the index that corresponds to the time closest to the input time
-                    index = np.where(val <= drop.time)[0][0]
-                elif input_type == allowed_input_type[1]:
-                    index =0.0
+        drop.indices_found = True
+        drop.manually_processed = True
 
-                    good_input= False
-                    while not good_input:
-                        print("\nInput must be an integer number (no decimal points) and less than {} \
-                            \nand greater than or equal to 0 ".format(0, len(drop.time)-1))
-                        try:
-                            # Try to convert the input to an integer
-                            index = input("Enter an integer index")
-
-                            if index == "":
-                                print("Escaping from process funky drops without completion")
-                                return None 
-
-                            index = int(index)
-
-                        except ValueError as err:
-                            print(err)
-                            good_input = False
-                            
-                            continue
-                        # Check that the integer is positive and inside the bounds of the arr
-                        if index <=len(drop.time)-1 and index >=0:
-                            good_input = True
-                
-                elif input_type == allowed_input_type[2]:
-                    # If the file can be left as move to the next drop
-                    continue
-                
-                integration_type = "None"
-                integration_ans = ["y", "n"]
-                while not integration_type in integration_ans:
-                    integration_type = input("Impulse Integration? (y or n)")
-                    
-                    if integration_type == "":
-                        print("Escaping from the process funky drops without completion" )
-                        return
-                    
-                    if integration_type == integration_ans[0]:
-                        drop.impulse_integration = True
-                    elif integration_type == integration_ans[1]:
-                        drop.impulse_integration = False
-                    
-
-                # set the value into the dict
-                drop.drop_indices[key] = index
-
-                # drop.indices_found = True 
-                if debug:
-                    print("Index", index)
+if __name__ == "__main__":
+    # Add some testing here
+    pass

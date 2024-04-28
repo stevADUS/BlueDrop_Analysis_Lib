@@ -5,10 +5,16 @@ import pandas as pd
 from plotly.subplots import make_subplots
 import matplotlib.pyplot as plt
 import plotly.graph_objects as go
+
 from lib.data_classes.exceptions import zeroLenError
 from lib.signal_processing.signal_function import moving_average
-from lib.general_functions.general_function import convert_accel_units, convert_time_units
-from lib.general_functions.global_constants import GRAVITY_CONST # Gravity in m/s^2
+from lib.general_functions.general_function import convert_accel_units, convert_time_units, convert_mass_units, convert_length_units
+from lib.general_functions.global_constants import GRAVITY_CONST, ALLOWED_TIP_TYPES_LIST
+from lib.mechanics_functions.bearing_capacity_funcs import calc_dyn_bearing_capacity, calc_qs_bearing_capacity
+from lib.pffp_functions.cone_area_funcs import calc_pffp_contact_area
+
+# TODO: In the future add a bearing capacity class to store all of the information about a bearing capacity calculation
+# TODO: make a pffp class that store all of the information about the pffp
 
 class Drop:
     #Purpose: Store info about a pffp drop
@@ -22,20 +28,43 @@ class Drop:
         self.peak_index = peak_index
         self.water_drop = None                    # Store if the drop is a water drop
         self.processed = False                    # Tracks if the drop was processed (ie. all the information to resolve it's start and end was collected)
-        self.manual_processed = False             # Tracks if the drop was processed manually
+        self.manually_processed = False           # Tracks if the drop was processed manually
         self.indices_found = False                # Tracks if the indices were all found
-        self.impulse_integration = True           # Use impulse integration (old method of integrating the function)
+        self.only_impulse  = False                # Use impulse integration (old method of integrating the function)
+        self.qDyn_bearing_col_name = None           # Most recent dynamic bearing column name
+        self.bearing_df = None                    # Will be used later to store the dynamic and quasistatic (qsbc) bearing capacities
+
+        # Init dict to hold the unit properties
+        self.units = {
+                      "mass": "kg",
+                      "Time": None,
+                      "displacement":None,
+                      "velocity": None, 
+                      "accel": None
+        }
+
         # init Dict to hold drop indices
         self.drop_indices = {
                 "release_index"      : None,
                 "start_impulse_index": None,
                 "end_impulse_index"  : None
             }
+        self.ref_velocities = {}                 # Init dict to hold the reference velocities for qsbc calculations for output to meta data
+        
+        # Init dict to hold pffp config information
+        self.pffp_config = {
+                            "volume": None,
+                            "tip_type": None,
+                            "tip_props": None,
+                            "area_type": None,
+                            "tip_col_name": None
+            }
         
     def __str__(self):
         # Purpose: Outputs information about the drops
         return f"----- Drop Info ----- \nContaining file: {self.containing_file} \nFile Drop Index: {self.file_drop_index} \nWater Drop: {self.water_drop}\
-            \nDrop indices: {self.drop_indices}"
+            \nDrop indices: {self.drop_indices} \nProcessed: {self.processed} \nManually Processed: {self.manually_processed}"
+    
     @staticmethod
     def check_arr_zero_length(arr, err_message):
         # Purpose: Check if an array has a length of zero and raise an error if it does
@@ -147,7 +176,6 @@ class Drop:
         # Return the first index that meets that criteria
         return index
 
-
     def get_impulse_end(self, accel, low_tol = 0.95, high_tol=1.05):
         # Purpose: Get the end of the impulse
         # index = np.where((accel[self.peak_index:]> low_tol) & (accel[self.peak_index:] < high_tol))[0]
@@ -164,7 +192,7 @@ class Drop:
         # Purpose: Store the sensor data only for where the drop is selected to be
 
         # Store the units of the acceleration and time
-        self.units = input_units
+        self.units.update(input_units)
 
         # Store the time in the drop
         self.time = convert_time_units(time, input_unit = self.units["Time"], output_unit = "s")
@@ -172,55 +200,52 @@ class Drop:
         # Change the time units
         self.units["Time"] = "s"
 
-        # Get the end of the impulse
-        end_drop_index = self.get_impulse_end(accel, low_tol=0.95, high_tol = 1.05)
+        if not self.manually_processed:
+            # Get the end of the impulse
+            end_drop_index = self.get_impulse_end(accel, low_tol=0.95, high_tol = 1.05)
 
-        # Get the start of the impulse
-        start_drop_index = self.get_impulse_start(accel, time)
+            # Get the start of the impulse
+            start_drop_index = self.get_impulse_start(accel, time)
 
-        # Get the release index of the impulse
-        # This often fails becasue drops are too close the beginning of the file, so try it 
-        try: 
-            release_index = self.find_release(accel, accel_offset =1, height_tol = 0.6, lower_accel_bound=0.95, upper_accel_bound=1.15)
-        
-        # If it fails due to not being found, catch the error the other indices then raise the error again
-        except zeroLenError as err:
-            release_index = None
+            # Get the release index of the impulse
+            # This often fails becasue drops are too close the beginning of the file, so try it 
+            try: 
+                release_index = self.find_release(accel, accel_offset =1, height_tol = 0.6, lower_accel_bound=0.95, upper_accel_bound=1.15)
+            
+            # If it fails due to not being found, catch the error the other indices then raise the error again
+            except zeroLenError as err:
+                release_index = None
 
-            # df's store using the original indices. ie. the times and accelerations have the same indices as they had in the full arrays
-            # Store the indices for later use (Stored in sequential order)
+                # df's store using the original indices. ie. the times and accelerations have the same indices as they had in the full arrays
+                # Store the indices for later use (Stored in sequential order)
+                self.drop_indices["release_index"] = release_index
+                self.drop_indices["start_impulse_index"] = start_drop_index
+                self.drop_indices["end_impulse_index"] = end_drop_index
+
+                print("Release not found ")
+                raise err
+            
+            # In the case finding thee results doesn't fail set the points
             self.drop_indices["release_index"] = release_index
             self.drop_indices["start_impulse_index"] = start_drop_index
             self.drop_indices["end_impulse_index"] = end_drop_index
 
-            print("Release not found ")
-            print(type(err))
-            raise err
-        
         # Store the time that's been calculted in seconds
         time = self.time
-
-        # In the case finding thee results doesn't fail set the points
-        self.drop_indices["release_index"] = release_index
-        self.drop_indices["start_impulse_index"] = start_drop_index
-        self.drop_indices["end_impulse_index"] = end_drop_index
 
         # Track that the indices were found
         self.indices_found = True
 
-        # Store from the release point until the end of the drop
-        whole_drop_accel= accel[release_index:end_drop_index]
-        whole_drop_time =  time[release_index:end_drop_index]
+        # Make and store the relase df
+        self.make_release_df(accel, time)
 
-        # Store the drop from the release to the end
-        self.whole_drop_df = pd.DataFrame(data = {
-            "Time": whole_drop_time,
-            "accel": whole_drop_accel
-        })
+        # Make and store the impulse df
+        self.make_impulse_df(accel, time)
 
+    def make_impulse_df(self, accel, time):
         # Store the impulse either way
-        impulse_accel = accel[start_drop_index:end_drop_index]
-        impulse_time  = time[start_drop_index:end_drop_index]
+        impulse_accel = accel[self.drop_indices["start_impulse_index"]:self.drop_indices["end_impulse_index"]]
+        impulse_time  = time[self.drop_indices["start_impulse_index"]:self.drop_indices["end_impulse_index"]]
         
         # Store the impulse time and acceleration
         self.impulse_df = pd.DataFrame(data = {
@@ -228,69 +253,268 @@ class Drop:
             "accel": impulse_accel
         })
 
+    def make_release_df(self, accel, time):
+        # Store from the release point until the end of the drop
+        whole_drop_accel= accel[self.drop_indices["release_index"]:self.drop_indices["end_impulse_index"]]
+        whole_drop_time =  time[self.drop_indices["release_index"]:self.drop_indices["end_impulse_index"]]
+
+        # Store the drop from the release to the end
+        self.release_df = pd.DataFrame(data = {
+            "Time": whole_drop_time,
+            "accel": whole_drop_accel
+        })
+
     def integrate_accel_data(self):
-        # TODO: Update this so that the impulse df is 
-        # Purpose: Integrate the impulse and store in impulse df
+        # Purpose: Integrates the drop from the release point to the end of the impulse. 
+        # Mark the drop processed
+        
+        if self.only_impulse:
+            # Likely was a manaually selected drop only do the impulse integration
+            self.impulse_integration()
+        else:
+            # Integrate the release
+            self.release_integration()
+
+            # Then get the impulse data from that
+            col_names = ["accel", "velocity", "displacement"]
+            
+            # TODO: here is the problem something is going wrong with this slicing. Check this tomorrow
+            # Just select the part of the release df that is needed
+            self.impulse_df[col_names] = self.release_df[col_names].loc[self.drop_indices["start_impulse_index"]:self.drop_indices["end_impulse_index"]]
+
+            # Flip the sign of velocity column
+            self.impulse_df[col_names[1]] = -1 * self.impulse_df[col_names[1]]
+            
+            # Flip the sign of displacement column and make it zero at the start
+            self.impulse_df[col_names[2]] = -1 * (self.impulse_df[col_names[2]] - self.impulse_df[col_names[2]].iloc[0])
+
+        # Update the units
+        self.units["accel"] = "m/s^2"
+        self.units["velocity"] = "m/s"
+        self.units["displacement"] = "m" 
+
+        self.processed = True
+
+    def release_integration(self):
+        # Purpose: Wrapper for the release and impulse intgration functions. Controls whether the full release integration is done 
+        # or just the impulse integration 
 
         # Temp storage for the df
-        whole_df = self.whole_drop_df
+        df = self.release_df.copy()
             
         # Convert the acceleration units
-        whole_df["accel"] = convert_accel_units(val = whole_df["accel"], input_unit = self.units["accel"], output_unit = "m/s^2")
+        df["accel"] = convert_accel_units(val = df["accel"], input_unit = self.units["accel"], output_unit = "m/s^2")
 
         # Apply the offset
-        whole_df["accel"] = whole_df["accel"] - GRAVITY_CONST
+        df["accel"] = df["accel"] - GRAVITY_CONST
 
         # Calc the velocity and the displacement
         # Cummulative integration takes "y" then "x" -> cummulative_trapezoid(y, x)
-        whole_velocity = cumulative_trapezoid(whole_df["accel"], whole_df["Time"])
+        velocity = cumulative_trapezoid(df["accel"], df["Time"], initial = 0.0)
 
-        whole_displacement = cumulative_trapezoid(whole_velocity, whole_df["Time"][1:])
-            
-        # Pad the velocity 
-        whole_velocity = np.concatenate((np.zeros(1), whole_velocity))
-        whole_displacement = np.concatenate((np.zeros(2), whole_displacement))
+        displacement = cumulative_trapezoid(velocity, df["Time"], initial = 0.0)
+        
+        # Update the accel columns and add the new velocity and displacement columns
+        self.release_df["accel"] = df["accel"]
+        self.release_df["velocity"] = velocity
+        self.release_df["displacement"] = displacement
 
-        whole_df["velocity"] = whole_velocity
-        whole_df["displacement"] = whole_displacement
-
-        # Store the info in the df
-        # self.whole_drop_df = whole_df   
+    def impulse_integration(self, init_velocity = 0.0):
+        # Purpose: Integrate the impulse. if self.impulse_integration == True the release df is not used to calculate the initial velocity
         
         # Temp storage for the df
-        impulse_df = self.impulse_df       
+        df = self.impulse_df.copy()       
 
         # Convert the units to m/s^2
-        impulse_df["accel"] = convert_accel_units(val = impulse_df["accel"], input_unit = self.units["accel"], output_unit = "m/s^2")
+        df["accel"] = convert_accel_units(val = df["accel"], input_unit = self.units["accel"], output_unit = "m/s^2")
 
-        # TODO: Make sure this offset makes sense
-        impulse_df["accel"] = impulse_df["accel"] - GRAVITY_CONST
-
-        start_index = self.drop_indices["start_impulse_index"]
-
-        # Get the impact velocity
-        init_velocity = -1 * whole_df["velocity"][start_index]
-
+        df["accel"] = df["accel"] - GRAVITY_CONST
+        
+        
         # Cummulative integration takes "y" then "x" -> cummulative_trapezoid(y, x)
-        impulse_velocity = cumulative_trapezoid(-1 * impulse_df["accel"], impulse_df["Time"], 
-                                                initial = 0) + init_velocity
+        velocity = cumulative_trapezoid(df["accel"], df["Time"], initial = 0) + init_velocity
 
+        # Flip the velocity because the probe is deaccelerting and you need the impact velocity at the beginning 
+        velocity = velocity.max() - velocity
 
         # Need to cutoff the first time index
-        impulse_displacment = cumulative_trapezoid(impulse_velocity, impulse_df["Time"], initial = 0.0)
+        displacement = cumulative_trapezoid(velocity, df["Time"], initial = 0.0)
         
         # Store the calculated values
-        impulse_df["velocity"]     = impulse_velocity
-        impulse_df["displacement"] = impulse_displacment
+        self.impulse_df["accel"]        = df["accel"] 
+        self.impulse_df["velocity"]     = velocity
+        self.impulse_df["displacement"] = displacement
+    
+    def calc_drop_qs_bearing(self, strain_rate_correc_type = "log", k_factor = 0.1, ref_velocity = 0.02, bearing_name = None, use_k_name = True, other_name = ""):
+        """
+        Purpose: Calc the quasi-static bearing capacity (qsbc) for this particular drop and store it in the self.bearing_df
+                 with a unique name using the k-factor or a user input
+        """
 
-        # Update the acceleration units
-        self.units["accel"] = "m/s^2"
-        self.units["velocity"] = "m/s"
-        self.units["displacement"] = "m"
+        velocity = self.impulse_df["velocity"]
 
-        # Mark the drop processed
-        self.processed = True
+        if bearing_name is None:
+            dynamic_bearing = self.bearing_df[self.qDyn_bearing_col_name]
+        else:
+            dynamic_bearing = self.bearing_df[bearing_name]
+
+        quasi_static_bearing = calc_qs_bearing_capacity(velocity=velocity, strainrateCorrectionType=strain_rate_correc_type,
+                                                        qDyn = dynamic_bearing, k_factor=k_factor, ref_velocity= ref_velocity)
         
+        # Construct the name 
+        if use_k_name:
+            # Construct the column name appending the k factor to make it unique 
+            col_name = "qsbc_{}_{}".format(self.pffp_config["area_type"][:4], k_factor)
+        else:
+            col_name = "qsbc_" + str(other_name)
+        
+        # Store the reference velocity for later output to metadata and reference velocity should be store for each calculation
+        self.ref_velocities[col_name] = ref_velocity
+
+        # Store the column in the df
+        self.bearing_df[col_name] = quasi_static_bearing
+
+    def calc_drop_dynamic_bearing(self, gravity = GRAVITY_CONST, rho_w = 1020, other_name = None):
+        """
+        Purpose: Calc the dynamic bearing capacity (qsbc) for this particular drop and store it in the self.bearing_df 
+        """
+
+        # Temp store the necessary parameters
+        accel = self.impulse_df["accel"]
+        pffp_props = self.pffp_config["tip_props"]
+        tip_val_col = self.pffp_config["tip_col_name"]
+
+        mass = pffp_props.loc[pffp_props["Properties"] == "pffp_mass"][tip_val_col].iloc[0]
+        volume = pffp_props.loc[pffp_props["Properties"] == "pffp_volume"][tip_val_col].iloc[0]
+        
+        if other_name is None:
+            contact_area_col_name = "{}_{}".format("contact_area", self.pffp_config["area_type"])
+            bearing_col_name = "{}_{}".format("qDyn", self.pffp_config["area_type"])
+
+        else:
+            contact_area_col_name = "{}_{}".format("contact_area", other_name)
+            bearing_col_name = "{}_{}".format("qDyn", other_name)
+
+        # Store the latest bearing column name
+        self.qDyn_bearing_col_name = bearing_col_name
+
+        # Check that the water drop value is set
+        if self.water_drop is None:
+            raise ValueError("To calculate the dynamic bearing capacity the flag for deciding if the drop is in water or not must be set")
+        
+        contact_area = self.bearing_df[contact_area_col_name]
+
+        # Calc the dynamic bearing capacity
+        qDyn = calc_dyn_bearing_capacity(pffp_accel=accel, pffp_mass=mass, contact_area=contact_area, pffp_volume=volume,
+                                         water_drop=self.water_drop, gravity=gravity, rho_w = rho_w)
+        
+        
+        # Store the dynamic bearing capcity result
+        self.bearing_df[bearing_col_name] = qDyn
+
+    def get_pffp_tip_values(self, pffp_id, tip_type, date_string, file_dir):
+        """
+        Purpose: Read and store the tip values
+        """
+
+        # Check that the tip type is allowed
+        if not tip_type in ALLOWED_TIP_TYPES_LIST:
+            raise ValueError("Tip type of {} is not allowed".format(tip_type))
+        
+        sheet_name = "bluedrop_{}".format(pffp_id)
+        self.pffp_config["tip_type"] = tip_type
+
+        tip_table = pd.read_excel(file_dir, sheet_name)
+
+        # Construct the column name
+        col_name = "{}_{}".format(tip_type, date_string)
+        
+        # Store the name of the column that the values live in
+        self.pffp_config["tip_col_name"] = col_name
+
+        self.pffp_config["tip_props"] = tip_table[["Properties", "units", col_name]]
+
+    def convert_tip_vals(self):
+        """"
+        Purpose: Convert the units of the tip properties to the units used in the used of the analysis
+        """
+
+        # Store the names of the columns need for relabelling
+        val_col_name = self.pffp_config["tip_col_name"]
+        properties_col_name = "Properties"
+
+        # Temp storage of the df
+        df = self.pffp_config["tip_props"]
+
+        # Get the mass row and the row index
+        row = df.loc[df[properties_col_name] == "pffp_mass"]
+        row_index = df.index[df['Properties'] == "pffp_mass"].tolist()
+
+        # Store the value
+        mass_val = row[val_col_name]
+
+        # Store the unit
+        mass_unit = row["units"].iloc[0]
+
+        # Convert the unit and store the value back in the df
+        df[val_col_name][row_index] = convert_mass_units(mass_val, mass_unit, self.units["mass"])
+
+        df["units"][row_index] = self.units["mass"]
+        
+        # List of props that may need to have there units converted
+        match self.pffp_config["tip_type"]:
+            case "parabola":
+                lengths_need_conversion = ["tip_height", "base_radius"]  
+            case "blunt":
+                lengths_need_conversion = ["tip_height", "base_radius"]  
+            case "cone":
+                lengths_need_conversion = ["tip_height", "base_radius", "tip_radius"]
+
+        # Loop over the lengths that need to be converted
+        for label in lengths_need_conversion:
+             row = df.loc[df[properties_col_name] == label]
+             row_index = df.index[df['Properties'] == label].tolist()
+     
+             # Store the value
+             val = row[val_col_name]
+     
+             # Store the unit
+             length_unit = row["units"].iloc[0]
+     
+             # Convert the unit and store the value back in the df
+             df[val_col_name][row_index] = convert_length_units(val, length_unit, self.units["displacement"])
+     
+             df["units"][row_index] = self.units["displacement"]
+            
+    def calc_drop_contact_area(self, area_type):
+
+        """
+        Purpose: Calc the contact area for bearing capacity calculations
+        """
+        # Store the area_type
+        self.pffp_config["area_type"] = area_type 
+        
+        # Temp storage of the df
+        tip_props = self.pffp_config["tip_props"]
+        
+        # Add cases here so that the correct values can be passed 
+        # Unpack some values
+        displacement = self.impulse_df["displacement"]
+        tip_type = self.pffp_config["tip_type"]
+
+        # Calc the contact area
+        contact_area = calc_pffp_contact_area(penetrationDepth=displacement, areaCalcType= area_type, tipType= tip_type, tipProps= tip_props, 
+                                              tip_val_col= self.pffp_config["tip_col_name"])
+
+        col_name = "{}_{}".format("contact_area", area_type)
+
+        # Store the contact area
+        if self.bearing_df is None:
+            self.bearing_df = pd.DataFrame(data = {col_name:contact_area}) 
+        else:
+            self.bearing_df[col_name] = contact_area
+
+    # Plotting functions
     def quick_view_impulse(self, interactive = True, figsize= [12, 8], legend = False):
         # Purpose: Provide a quick view of impulse
  
@@ -377,7 +601,7 @@ class Drop:
         # Purpose: Provide a quick view of the full release
 
         # Temp df storage
-        df = self.whole_drop_df
+        df = self.release_df
         time = df["Time"]
         accel = df["accel"]
         vel = df["velocity"]
@@ -457,7 +681,7 @@ class Drop:
         start = self.drop_indices["start_impulse_index"] - offset
         end = self.drop_indices["end_impulse_index"]
 
-        plt.plot(self.whole_drop_df["Time"].loc[start:end], self.whole_drop_df["accel"].loc[start:end], color = "blue", label= "release")
+        plt.plot(self.release_df["Time"].loc[start:end], self.release_df["accel"].loc[start:end], color = "blue", label= "release")
         plt.scatter(self.impulse_df["Time"], self.impulse_df["accel"], color = "red", label = "impulse")
 
         time_units = self.units["Time"]
@@ -473,4 +697,6 @@ class Drop:
         
         plt.show()
 
-        
+if __name__ == "__main__":
+    # Add some testing here
+    pass

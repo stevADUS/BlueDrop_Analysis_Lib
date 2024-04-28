@@ -37,3 +37,7 @@ class TypeMixin:
         # TODO: Add checks and error catches
         # Write the data
        pd.DataFrame.to_excel(df, file_dir, sheet_name)
+
+if __name__ == "__main__":
+    # Add some testing here
+    pass

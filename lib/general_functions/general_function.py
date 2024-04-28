@@ -90,3 +90,30 @@ def convert_length_units(val, input_unit, output_unit):
     output_val = standard * standard_to_output[output_unit]
 
     return output_val
+
+def convert_mass_units(val, input_unit, output_unit):
+    # Purpose: Convert one mass unit to another
+
+    # Convert everything to kg
+    input_to_standard = {
+        "g" :1e-3,
+        "lb":0.453592,
+        "kg":1
+    }
+    standard_to_output = {
+        "g":1/input_to_standard["g"],
+        "lb":1/input_to_standard["lb"],
+        "kg" :1/input_to_standard["kg"]
+    }
+
+    # Convert the val to standard value
+    standard = val * input_to_standard[input_unit]
+
+    # Conver the standard valuye to the desired output
+    output_val = standard * standard_to_output[output_unit]
+
+    return output_val
+
+if __name__ == "__main__":
+    # Add some testing here
+    pass

@@ -46,5 +46,8 @@ class BinaryFile(File, TypeMixin):
 
         # return the df
         return pd.DataFrame(integer_matrix, columns = column_names)
-    
+
+if __name__ == "__main__":
+    # Add some testing here
+    pass
 

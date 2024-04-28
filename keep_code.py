@@ -296,3 +296,119 @@ def get_change_points(signal, n_change_points= 1, model = "l1"):
     # Zero shift the indices and return the results
     # Returns the change points and the last index
     return np.array(result)-1
+
+    
+
+def integrate_accel_data(self):
+        # TODO: Update this so that the impulse df is 
+        # Purpose: Integrate the impulse and store in impulse df
+
+        # Temp storage for the df
+        whole_df = self.release_df
+            
+        # Convert the acceleration units
+        whole_df["accel"] = convert_accel_units(val = whole_df["accel"], input_unit = self.units["accel"], output_unit = "m/s^2")
+
+        # Apply the offset
+        whole_df["accel"] = whole_df["accel"] - GRAVITY_CONST
+
+        # Calc the velocity and the displacement
+        # Cummulative integration takes "y" then "x" -> cummulative_trapezoid(y, x)
+        whole_velocity = cumulative_trapezoid(whole_df["accel"], whole_df["Time"])
+
+        whole_displacement = cumulative_trapezoid(whole_velocity, whole_df["Time"][1:])
+            
+        # Pad the velocity 
+        whole_velocity = np.concatenate((np.zeros(1), whole_velocity))
+        whole_displacement = np.concatenate((np.zeros(2), whole_displacement))
+
+        whole_df["velocity"] = whole_velocity
+        whole_df["displacement"] = whole_displacement
+
+        # Store the info in the df
+        # self.release_df = whole_df   
+        
+        # Temp storage for the df
+        impulse_df = self.impulse_df       
+
+        # Convert the units to m/s^2
+        impulse_df["accel"] = convert_accel_units(val = impulse_df["accel"], input_unit = self.units["accel"], output_unit = "m/s^2")
+
+        # TODO: Make sure this offset makes sense
+        impulse_df["accel"] = impulse_df["accel"] - GRAVITY_CONST
+
+        start_index = self.drop_indices["start_impulse_index"]
+
+        # Get the impact velocity
+        init_velocity = -1 * whole_df["velocity"][start_index]
+
+        # Cummulative integration takes "y" then "x" -> cummulative_trapezoid(y, x)
+        impulse_velocity = cumulative_trapezoid(-1 * impulse_df["accel"], impulse_df["Time"], 
+                                                initial = 0) + init_velocity
+
+
+        # Need to cutoff the first time index
+        impulse_displacment = cumulative_trapezoid(impulse_velocity, impulse_df["Time"], initial = 0.0)
+        
+        # Store the calculated values
+        impulse_df["velocity"]     = impulse_velocity
+        impulse_df["displacement"] = impulse_displacment
+
+        # Update the acceleration units
+        self.units["accel"] = "m/s^2"
+        self.units["velocity"] = "m/s"
+        self.units["displacement"] = "m"
+
+        # Mark the drop processed
+        self.processed = True
+
+        def process_drops(self):
+        # Purpose: Analyze the drops in the files
+
+        # Check if the df is stored
+        if self.df_stored:
+            # Temporarily store the df
+            df = self.df
+        else: 
+            # Load the df
+            df = self.binary_2_sensor_df(acceleration_unit = self.sensor_units["accel"], pressure_unit = self.sensor_units["pressure"], time_unit= self.sensor_units["Time"])
+        
+        # display(df.head())
+        # loop over the drops in the file
+        accel = self.concat_accel
+        time = df["Time"]
+
+        raise_error = False
+        
+        for drop in self.drops:  
+            skip_integration = False
+            # Try to trim the acceleration data and integrate it
+            # Do the try here than pass the error back up
+            try:
+                # Trim the acceleration data
+                drop.cut_accel_data(accel, time, input_units = {"accel":"g", "Time":"min"} )
+
+            except zeroLenError as err:
+                # Print the error message
+                details= err.args[0]
+
+                # Print the error details
+                print("\n" + details["message"])
+                print("Criteria not met:", details["criteria"])
+                print(details["source"])
+                print("Moving file to funky folder")
+
+                # set error flag but try to process other drops
+                raise_error = True
+                skip_integration = True
+
+            if not skip_integration:
+                # If no error caught for this drop do the integration
+                drop.integrate_accel_data()
+
+                # Set the flag 
+                drop.processed = True 
+
+        # Raise error so the file gets moved into the funky folder
+        if raise_error:
+            raise zeroLenError

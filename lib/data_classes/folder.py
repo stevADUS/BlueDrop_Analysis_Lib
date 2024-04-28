@@ -56,6 +56,8 @@ class Folder:
 
         return file_dirs
 
-
+if __name__ == "__main__":
+    # Add some testing here
+    pass
 
 

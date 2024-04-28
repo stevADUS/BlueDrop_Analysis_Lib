@@ -216,6 +216,7 @@ class pffpDataFolder(Folder):
 
             # Update the number of drop files
             self.num_drop_files = len(self.pffp_drop_files)
+            
     def get_file_index_from_name(self):
         # TODO: Purpose: Given a file name get the index of that file in
             #  pffp_files list
@@ -223,3 +224,6 @@ class pffpDataFolder(Folder):
         pass
 
     
+if __name__ == "__main__":
+    # Add some testing here
+    pass
