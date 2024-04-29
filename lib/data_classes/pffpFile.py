@@ -45,6 +45,8 @@ class pffpFile(BinaryFile):
     @staticmethod
     def convert_acceleration_unit(df, columns, input_unit, output_unit):
         # Purpose: Convert the acceleration unit from one  to another
+        # TODO: Generalize this so that it follows the same format as the other converters
+        # NOTE: Could potentiallly make a general function that just understands units
 
         if input_unit  != "g":
             raise IndexError("Conversions starting from units other than g's not implemented")
@@ -58,7 +60,28 @@ class pffpFile(BinaryFile):
         df[columns] = df[columns] * acceleration_conversion_dict[output_unit]
 
         return df
+        
+    @staticmethod
+    def get_tightest_sensor(row, resolutions, labels):
+        value = row.max()
+
+        # Filter out resolutions smaller than the value
+        valid_resolutions = [res for res in resolutions if res >= value]
+
+        # If all resolutions are greater than the value, use the smallest resolution
+        if not valid_resolutions:
+            closest_resolution = min(resolutions)
+        else:
+            closest_resolution = min(valid_resolutions, key=lambda x: abs(x - value))
+        
+        # Get the index of the closest resolution
+        index = resolutions.index(closest_resolution)
+
+        # Get the column the closest data is in
+        col = labels[index] 
             
+        return row[col]
+    
     def binary_2_sensor_df(self, size_byte = 3, byte_order = "big", signed = True, acceleration_unit = "g", pressure_unit = "kPa", time_unit = "min"):
         # Purpose read a binary file and transform it to a processed df
         column_names = ["Count", 'Unknown', "2g_accel", "18g_accel", "50g_accel", "pore_pressure", "200g_accel", 
@@ -311,101 +334,6 @@ class pffpFile(BinaryFile):
             return True
         else:
             return False
-        
-    def quick_view(self, interactive = False, figsize = [12, 8], legend = False):
-        # Purpose: Get a quick view of the file
-
-        # if the df isn't stored load it for plotting don't store it though
-        if not self.df_stored:
-            df = self.binary_2_sensor_df(acceleration_unit="g", pressure_unit= "kPa")
-        else:
-            # Otherwise use the stored df
-            df = self.df
-
-        # generate the figure object
-        time = df["Time"]
-        
-        accel_labels = ["2g_accel", "18g_accel", "50g_accel", "200g_accel", "250g_accel"]
-        tilt_labels = ["55g_x_tilt", "55g_y_tilt"]
-        pressure_label = "pore_pressure"
-
-        time_unit = self.sensor_units["Time"]
-        accel_unit = self.sensor_units["accel"]
-        pressure_unit = self.sensor_units["pressure"]
-        
-        if interactive:
-            fig = make_subplots(rows = 3, cols = 1, shared_xaxes = True)
-
-            # Accelerometer plots
-            for label in accel_labels:
-                fig.add_trace(
-                    go.Scatter(x = time, y = df[label], mode = "lines", name = label),
-                    row = 1, col = 1
-                )
-
-            # Pore pressure sensor
-            fig.add_trace(
-                go.Scatter(x = time, y = df[pressure_label], mode = "lines", name = "pore pressure"),
-                row = 2, col = 1
-            )
-            
-            # Tilt sensors
-            for label in tilt_labels:
-                fig.add_trace(
-                    go.Scatter(x = time, y = df[label], mode = "lines", name = label),
-                    row = 3, col = 1
-                )
-
-            # Update xaxis properties
-            fig.update_xaxes(title_text="Time {time_unit}", row=3, col=1)
-
-            # Update yaxis properties
-            fig.update_yaxes(title_text="Acceleration (g)", row=1, col=1)
-            fig.update_yaxes(title_text="Pressure (kPa)", row=2, col=1)
-            fig.update_yaxes(title_text="Acceleration (g)", row=3, col=1)
-
-            # Update figure title
-            fig.update_layout(height = figsize[1] *100, width = figsize[0] *100,
-                            title_text=f"File Name: {self.file_name}")
-
-            # Show the plot interactivity
-            fig.show()
-        else:
-            # Use matplotlib
-            fig, axs = plt.subplots(ncols = 1, nrows = 3, figsize = (figsize[0], figsize[1]))
-
-            # Accelerometers
-            for label in accel_labels:
-                axs[0].plot(time, df[label], label = label)
-            
-            # Pressure sensor
-            axs[1].plot(time, df[pressure_label], label = pressure_label)
-
-            # Tilt sensors
-            for label in tilt_labels:
-                axs[2].plot(time, df[label], label = label)
-            
-            # Turn on the legends
-            if legend:
-                axs[0].legend()
-                axs[1].legend()
-                axs[2].legend()
-
-            # Label the y-axis
-            axs[0].set_ylabel(f"Acceleration [{accel_unit}]")
-            axs[1].set_ylabel(f"Pressure [{pressure_unit}]")
-            axs[2].set_ylabel(f"Acceleration [{accel_unit}]")
-
-            # Label the x-axis
-            axs[0].set_xlabel(f"Time [{time_unit}]")
-            axs[1].set_xlabel(f"Time [{time_unit}]")
-            axs[2].set_xlabel(f"Time [{time_unit}]")
-
-            # Give the entire figure a label
-            fig.suptitle(f"File Name: {self.file_name}")
-
-            plt.tight_layout()
-            plt.show()
 
     def check_pore_pressure_4_drop(self, df, window = 2500):
         # Purpose: use pore pressure to check if there's a drop in the file
@@ -434,75 +362,6 @@ class pffpFile(BinaryFile):
 
         return time_peak_pressure_deriv, num_drops
     
-    def plot_drop_impulses(self, figsize = [4,6], save_figs = False, hold = False, legend = True,
-                            colors = ["black", "blue", "green", "orange", "purple", "brown"],
-                            units = {"Time":"s", "accel":"g", "velocity":"m/s", "displacement":"cm"},
-                            line_style = ["solid", "dashed"]):        
-        # Purpose: Plot the standard velocity and acceleration vs. displacement plots for all the drops
-        # TODO: Move this to the drop level and call the drop function here
-        # Set all of the line colors to black if hold is on
-        if not hold:
-            colors = ["black"] * self.num_drops
-            
-        # Loop over the drops and plot them
-
-        first_processed_drop = -1
-        for i, drop in enumerate(self.drops):
-            
-            # If the processing for the drop is not done
-            if not drop.processed:
-                # Print the drop information
-                print(drop, "not finished being processed")
-
-                # Go to the next drop
-                continue
-            
-            # Increment the tracker for plotting
-            first_processed_drop+=1
-
-            if not hold:
-                # Make a new figure every time
-                fig, axs = plt.subplots(nrows = 1, ncols = 1, figsize = (figsize[0], figsize[1]))
-            elif hold and first_processed_drop ==0:
-                fig, axs = plt.subplots(nrows = 1, ncols = 1, figsize = (figsize[0], figsize[1]))
-
-            drop_units = drop.units
-
-            time = drop.impulse_df["Time"]
-            accel = drop.impulse_df["accel"]
-            vel = drop.impulse_df["velocity"]
-            disp = drop.impulse_df["displacement"]
-
-            # Convert the units
-            time = convert_time_units(time, drop_units["Time"], units["Time"])
-            accel = convert_accel_units(accel, drop_units["accel"], units["accel"])
-            disp = convert_length_units(disp, drop_units["displacement"], units["displacement"])
-
-            if drop_units["velocity"] != units["velocity"]:
-                raise ValueError("Conversion for velocity not implemented")
-            
-            axs.plot(accel, disp, color = colors[i], label= "acceleration", linestyle = line_style[0])
-            axs.plot(vel, disp, color = colors[i], label = "velocity", linestyle = line_style[1])
-
-            # label the axes
-            if hold and first_processed_drop == 0 or not hold:
-                accel_unit = units["accel"]
-                vel_unit = units["velocity"]
-                disp_unit = units["displacement"]
-
-                axs.set_xlabel(f"Acceleration ({accel_unit})/Velocity ({vel_unit})")
-                axs.set_ylabel(f"Displacement ({disp_unit})")
-                
-                # Label the plot only with the file name if hold is on
-                if hold:
-                    axs.set_title(f"File: {self.file_name} Num Drops: {self.num_drops}")
-                else: 
-                    axs.set_title(f"File: {self.file_name} Drop id: {drop.file_drop_index}")
-                axs.invert_yaxis()
-
-            if legend:
-                axs.legend()
-
     def stitch_accelerometers(self, accel_df, accel_labels):
         # Purpose: Stich acclerometers together to get the most resolved accelerations
         res_dict = {"2g_accel":1.7, "18g_accel": 18, "50g_accel":50, "200g_accel":200, "250g_accel":250}
@@ -514,27 +373,6 @@ class pffpFile(BinaryFile):
         series = df.apply(self.get_tightest_sensor, axis = 1, args = (resolutions,accel_labels,))
         self.concat_accel = series
         self.stored_concat_accel = True
-
-    @staticmethod
-    def get_tightest_sensor(row, resolutions, labels):
-        value = row.max()
-
-        # Filter out resolutions smaller than the value
-        valid_resolutions = [res for res in resolutions if res >= value]
-
-        # If all resolutions are greater than the value, use the smallest resolution
-        if not valid_resolutions:
-            closest_resolution = min(resolutions)
-        else:
-            closest_resolution = min(valid_resolutions, key=lambda x: abs(x - value))
-        
-        # Get the index of the closest resolution
-        index = resolutions.index(closest_resolution)
-
-        # Get the column the closest data is in
-        col = labels[index] 
-            
-        return row[col]
     
     def manual_indices_selection(self, drop, debug = False, interactive = True, figsize = [12,8], legend = False, lag = 0.1):
         # Purpose: Manually select indices for drops
@@ -660,6 +498,171 @@ class pffpFile(BinaryFile):
 
         drop.indices_found = True
         drop.manually_processed = True
+
+    # Plotting functions
+    def quick_view(self, interactive = False, figsize = [12, 8], legend = False):
+        # Purpose: Get a quick view of the file
+
+        # if the df isn't stored load it for plotting don't store it though
+        if not self.df_stored:
+            df = self.binary_2_sensor_df(acceleration_unit="g", pressure_unit= "kPa")
+        else:
+            # Otherwise use the stored df
+            df = self.df
+
+        # generate the figure object
+        time = df["Time"]
+        
+        accel_labels = ["2g_accel", "18g_accel", "50g_accel", "200g_accel", "250g_accel"]
+        tilt_labels = ["55g_x_tilt", "55g_y_tilt"]
+        pressure_label = "pore_pressure"
+
+        time_unit = self.sensor_units["Time"]
+        accel_unit = self.sensor_units["accel"]
+        pressure_unit = self.sensor_units["pressure"]
+        
+        if interactive:
+            fig = make_subplots(rows = 3, cols = 1, shared_xaxes = True)
+
+            # Accelerometer plots
+            for label in accel_labels:
+                fig.add_trace(
+                    go.Scatter(x = time, y = df[label], mode = "lines", name = label),
+                    row = 1, col = 1
+                )
+
+            # Pore pressure sensor
+            fig.add_trace(
+                go.Scatter(x = time, y = df[pressure_label], mode = "lines", name = "pore pressure"),
+                row = 2, col = 1
+            )
+            
+            # Tilt sensors
+            for label in tilt_labels:
+                fig.add_trace(
+                    go.Scatter(x = time, y = df[label], mode = "lines", name = label),
+                    row = 3, col = 1
+                )
+
+            # Update xaxis properties
+            fig.update_xaxes(title_text="Time {time_unit}", row=3, col=1)
+
+            # Update yaxis properties
+            fig.update_yaxes(title_text="Acceleration (g)", row=1, col=1)
+            fig.update_yaxes(title_text="Pressure (kPa)", row=2, col=1)
+            fig.update_yaxes(title_text="Acceleration (g)", row=3, col=1)
+
+            # Update figure title
+            fig.update_layout(height = figsize[1] *100, width = figsize[0] *100,
+                            title_text=f"File Name: {self.file_name}")
+
+            # Show the plot interactivity
+            fig.show()
+        else:
+            # Use matplotlib
+            fig, axs = plt.subplots(ncols = 1, nrows = 3, figsize = (figsize[0], figsize[1]))
+
+            # Accelerometers
+            for label in accel_labels:
+                axs[0].plot(time, df[label], label = label)
+            
+            # Pressure sensor
+            axs[1].plot(time, df[pressure_label], label = pressure_label)
+
+            # Tilt sensors
+            for label in tilt_labels:
+                axs[2].plot(time, df[label], label = label)
+            
+            # Turn on the legends
+            if legend:
+                axs[0].legend()
+                axs[1].legend()
+                axs[2].legend()
+
+            # Label the y-axis
+            axs[0].set_ylabel(f"Acceleration [{accel_unit}]")
+            axs[1].set_ylabel(f"Pressure [{pressure_unit}]")
+            axs[2].set_ylabel(f"Acceleration [{accel_unit}]")
+
+            # Label the x-axis
+            axs[0].set_xlabel(f"Time [{time_unit}]")
+            axs[1].set_xlabel(f"Time [{time_unit}]")
+            axs[2].set_xlabel(f"Time [{time_unit}]")
+
+            # Give the entire figure a label
+            fig.suptitle(f"File Name: {self.file_name}")
+
+            plt.tight_layout()
+            plt.show()
+
+    def plot_drop_impulses(self, figsize = [4,6], save_figs = False, hold = False, legend = True,
+                            colors = ["black", "blue", "green", "orange", "purple", "brown"],
+                            units = {"Time":"s", "accel":"g", "velocity":"m/s", "displacement":"cm"},
+                            line_style = ["solid", "dashed"]):        
+        # Purpose: Plot the standard velocity and acceleration vs. displacement plots for all the drops
+        # TODO: Move this to the drop level and call the drop function here
+        # Set all of the line colors to black if hold is on
+        if not hold:
+            colors = ["black"] * self.num_drops
+            
+        # Loop over the drops and plot them
+
+        first_processed_drop = -1
+        for i, drop in enumerate(self.drops):
+            
+            # If the processing for the drop is not done
+            if not drop.processed:
+                # Print the drop information
+                print(drop, "not finished being processed")
+
+                # Go to the next drop
+                continue
+            
+            # Increment the tracker for plotting
+            first_processed_drop+=1
+
+            if not hold:
+                # Make a new figure every time
+                fig, axs = plt.subplots(nrows = 1, ncols = 1, figsize = (figsize[0], figsize[1]))
+            elif hold and first_processed_drop ==0:
+                fig, axs = plt.subplots(nrows = 1, ncols = 1, figsize = (figsize[0], figsize[1]))
+
+            drop_units = drop.units
+
+            time = drop.impulse_df["Time"]
+            accel = drop.impulse_df["accel"]
+            vel = drop.impulse_df["velocity"]
+            disp = drop.impulse_df["displacement"]
+
+            # Convert the units
+            time = convert_time_units(time, drop_units["Time"], units["Time"])
+            accel = convert_accel_units(accel, drop_units["accel"], units["accel"])
+            disp = convert_length_units(disp, drop_units["displacement"], units["displacement"])
+
+            if drop_units["velocity"] != units["velocity"]:
+                raise ValueError("Conversion for velocity not implemented")
+            
+            axs.plot(accel, disp, color = colors[i], label= "acceleration", linestyle = line_style[0])
+            axs.plot(vel, disp, color = colors[i], label = "velocity", linestyle = line_style[1])
+
+            # label the axes
+            if hold and first_processed_drop == 0 or not hold:
+                accel_unit = units["accel"]
+                vel_unit = units["velocity"]
+                disp_unit = units["displacement"]
+
+                axs.set_xlabel(f"Acceleration ({accel_unit})/Velocity ({vel_unit})")
+                axs.set_ylabel(f"Displacement ({disp_unit})")
+                
+                # Label the plot only with the file name if hold is on
+                if hold:
+                    axs.set_title(f"File: {self.file_name} Num Drops: {self.num_drops}")
+                else: 
+                    axs.set_title(f"File: {self.file_name} Drop id: {drop.file_drop_index}")
+                axs.invert_yaxis()
+
+            if legend:
+                axs.legend()
 
 if __name__ == "__main__":
     # Add some testing here
