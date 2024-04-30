@@ -204,10 +204,21 @@ class pffpFile(BinaryFile):
             # Init list to store accel indices that need to be deleted
             index_2_delete = []
 
-            # Get the max deceleration and use 75% of that as the cutoff
-            # min_height = max(0.75 * np.max(self.concat_accel), 2.8)
-            min_height = max(0.6 * np.max(self.concat_accel), 2)
+            # Get the max deceleration so that a guess of the selected peak height can be choosen
+            max_accel = np.max(self.concat_accel)
+            tol_5g = 6.0
 
+            # Min height that's considered a drop
+            min_2g = 2
+
+            if max_accel < tol_5g:
+                percentage_tol = 0.6
+                min_height = max(percentage_tol * max_accel, min_2g)
+            else:
+                # For the drops that have a higher max acceleration use a lower proportion of max acceleration
+                percentage_tol = 0.4
+                min_height = max(percentage_tol * max_accel, min_2g)
+                
             #TODO: For the time being just check the 18g sensor in the future multiple sens
             peak_indexs, peak_info, num_accel_drops = find_drops(self.concat_accel, min_peak_height=min_height, impact_time_tol = 0.03)
 
