@@ -697,6 +697,66 @@ class Drop:
         
         plt.show()
 
+    # Outputting functions
+    def output_impulse_data(self, folder_dir = "", file_name = None, index = False):
+        """
+        Purpose: Output impulse data to a specified file format
+        """
+
+        # If no file name was inputted
+        if file_name is None:
+            containing_file = self.containing_file.replace(".bin", "")
+
+            # Get the output name and folder
+            name = "{}/impulse_drop_id_{}_{}.csv".format(folder_dir, self.file_drop_index, containing_file)
+        else:
+            raise ValueError("Inputting an alternate name for this file is not implemented at this time")
+
+        # Temp storage of the df
+        df = self.impulse_df
+
+        df.to_csv(name, index = index)
+
+    def output_release_data(self, folder_dir = "", file_name = None, index = False):
+        """
+        Purpose: Output release data to a specified file format
+        """
+        # TODO: Add a condition here that if the release data doesn't exist a warning is printed to the screen
+
+        # If no file name was inputted
+        if file_name is None:
+            containing_file = self.containing_file.replace(".bin", "")
+
+            # Get the output name and folder
+            name = "{}/release_drop_id_{}_{}.csv".format(folder_dir, self.file_drop_index, containing_file)
+        else:
+            raise ValueError("Inputting an alternate name for this file is not implemented at this time")
+
+        # Temp storage of the df
+        df = self.release_df
+
+        df.to_csv(name, index = index)
+
+    def output_bearing_data(self, folder_dir = "", file_name = None, index = False):
+        """
+        Purpose: Output bearing capacity data to a specified file format
+        """
+
+        
+        # If no file name was inputted
+        if file_name is None:
+            containing_file = self.containing_file.replace(".bin", "")
+
+            # Get the output name and folder
+            name = "{}/bearing_drop_id_{}_{}.csv".format(folder_dir, self.file_drop_index, containing_file)
+        else:
+            raise ValueError("Inputting an alternate name for this file is not implemented at this time")
+
+        # Temp storage of the df
+        df = self.bearing_df
+
+        df.to_csv(name, index = index)
+
 if __name__ == "__main__":
     # Add some testing here
     pass

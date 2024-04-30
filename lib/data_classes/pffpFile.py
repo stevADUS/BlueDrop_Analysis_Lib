@@ -23,7 +23,7 @@ class pffpFile(BinaryFile):
         self.calibration_params = calibration_params
         
         # Get the file name
-        self.file_name = self.get_file_name()
+        self.get_file_name()
 
         # Get the file drop date
         self.get_file_datetime()
@@ -82,6 +82,30 @@ class pffpFile(BinaryFile):
             
         return row[col]
     
+    def new_pffp_file_name(self, survey_id, num_char_from_end = 8, use_default = True, other_name = None):
+        """
+        Purpose: Update the name of a pffp file
+        """
+
+        # TODO: Need to make sure this works
+        # If the default
+        if use_default:
+            # Get the base name which is the hex number and the file extension
+            base_name = self.file_name[-num_char_from_end:]
+
+            new_pffp_name = "{}_{}".format(survey_id, base_name)
+            
+            # Rename the file and update the properties of the file class to track that info
+            self.new_file_name(new_name=new_pffp_name)
+        
+        # In case a name other than the default format is wanted
+        elif not other_name is None:
+            raise ValueError("Using a name other than the default is not implemented at this time")
+
+        # Rename the containing file name for the drops
+        for drop in self.drops:
+            drop.containing_file = self.file_name
+
     def binary_2_sensor_df(self, size_byte = 3, byte_order = "big", signed = True, acceleration_unit = "g", pressure_unit = "kPa", time_unit = "min"):
         # Purpose read a binary file and transform it to a processed df
         column_names = ["Count", 'Unknown', "2g_accel", "18g_accel", "50g_accel", "pore_pressure", "200g_accel", 
@@ -300,8 +324,23 @@ class pffpFile(BinaryFile):
         if raise_error:
             raise zeroLenError
 
-    def manually_process_drop(self, drop):
-        # Purpose: Analyze drops that were manually processed
+    def manually_process_drops(self, interactive_plot = True, figsize = [6,4]):
+        """
+        Purpose: Wrapper for the manual indices selection and the manual integration 
+                 Allows manual drops in this file to be processed
+        """
+        # Loop over the drops in the file
+        for drop in self.drops: 
+            # If the drop isn't processed
+            if not drop.processed:
+                # Do the manual indices selction
+                self.manual_indices_selection(drop, interactive = interactive_plot, figsize = figsize)
+
+                # And do the integration
+                self.manually_integrate_drop(drop)
+
+    def manually_integrate_drop(self, drop):
+        # Purpose: Setup and integrate the drops that were manually processed
 
         # Check if the df is stored
         if self.df_stored:
@@ -380,7 +419,7 @@ class pffpFile(BinaryFile):
         # Print information about the drop
         print(drop)
 
-        print("Plotting file data...")
+        print("\nPlotting file data...")
         # Plot the data
         self.quick_view(interactive=interactive, figsize= figsize, legend = legend)
         
