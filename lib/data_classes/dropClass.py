@@ -5,6 +5,7 @@ import pandas as pd
 from plotly.subplots import make_subplots
 import matplotlib.pyplot as plt
 import plotly.graph_objects as go
+import datetime
 
 from lib.data_classes.exceptions import zeroLenError
 from lib.signal_processing.signal_function import moving_average
@@ -70,6 +71,43 @@ class Drop:
         # Purpose: Check if an array has a length of zero and raise an error if it does
         if len(arr) ==0:
             raise zeroLenError(err_message)
+    
+    def get_drop_datetime(self, file):
+        """
+        ### Purpose: use the file datetime to and the the time of the impact as the drop datetime
+        """
+        impulse_index = self.drop_indices["start_impulse_index"]
+        
+        # Get the delta_t from the start of the file
+        delta_t = self.time[impulse_index]
+        
+        units = self.units["Time"]
+        match units:
+            case "s":
+                self.datetime = file.datetime + datetime.timedelta(seconds=delta_t)
+            case "min":
+                self.datetime = file.datetime + datetime.timedelta(minutes=delta_t)
+            case _:
+                raise ValueError("Only min and s time implemented")
+            
+    def make_drop_name(self):
+        """
+        Purpose: Make the drop id for this drop
+        """
+        # Remove .bin
+        file_name = self.containing_file.replace(".bin", "")
+        self.name = "{}_index_{}".format(file_name, self.file_drop_index)
+
+    def get_peak_impulse_deceleration(self):
+        """
+        ## Purpose: Get the max impulse accelertion and stoe it
+        """ 
+        peak = self.impulse_df["accel"].max()
+
+        # Force it to be in the standard unit just in case
+        peak = convert_accel_units(peak, self.units["accel"], "m/s^2")
+        
+        self.peak_deceleration = peak 
 
     def find_release(self, accel, accel_offset = 1, height_tol=0.6, lower_accel_bound = 0.95, upper_accel_bound = 1.15):
         # Purpose: Find the release point of the drop
