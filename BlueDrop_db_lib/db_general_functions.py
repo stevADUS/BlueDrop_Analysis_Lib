@@ -32,6 +32,12 @@ def table_exists(table_name, db_name):
         print("Error checking table existence:", e)
         return False
     
+def get_bearing_names(columns):
+        contact_area_name = [s for s in columns if "contact_area_" in s][0]
+        qDyn_name = [s for s in columns if "qDyn_" in s][0]
+        qsbc_names = [s for s in columns if "qsbc_" in s]
+        return contact_area_name, qDyn_name, qsbc_names
+    
 # Example usage:
 if __name__ == "__main__":
     pass

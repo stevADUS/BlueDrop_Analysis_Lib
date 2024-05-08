@@ -32,9 +32,14 @@ class Drop:
         self.manually_processed = False           # Tracks if the drop was processed manually
         self.indices_found = False                # Tracks if the indices were all found
         self.only_impulse  = False                # Use impulse integration (old method of integrating the function)
-        self.qDyn_bearing_col_name = None           # Most recent dynamic bearing column name
-        self.bearing_df = None                    # Will be used later to store the dynamic and quasistatic (qsbc) bearing capacities
+        
+        # Init dict to hold the bearing dfs
+        self.bearing_dfs = {
+            "projected": None,
+            "mantle": None
+        }
 
+        #TODO: In the future store the projected and mantle dfs in a dict then just reference them using the area type
         # Init dict to hold the unit properties
         self.units = {
                       "mass": "kg",
@@ -52,12 +57,11 @@ class Drop:
             }
         self.ref_velocities = {}                 # Init dict to hold the reference velocities for qsbc calculations for output to meta data
         
+        # Init 
         # Init dict to hold pffp config information
         self.pffp_config = {
-                            "volume": None,
                             "tip_type": None,
                             "tip_props": None,
-                            "area_type": None,
                             "tip_col_name": None
             }
         
@@ -383,26 +387,24 @@ class Drop:
         self.impulse_df["velocity"]     = velocity
         self.impulse_df["displacement"] = displacement
     
-    def calc_drop_qs_bearing(self, strain_rate_correc_type = "log", k_factor = 0.1, ref_velocity = 0.02, bearing_name = None, use_k_name = True, other_name = ""):
+    def calc_drop_qs_bearing(self, area_type, strain_rate_correc_type = "log", k_factor = 0.1, ref_velocity = 0.02, bearing_name = None, use_k_name = True, other_name = ""):
         """
-        Purpose: Calc the quasi-static bearing capacity (qsbc) for this particular drop and store it in the self.bearing_df
+        Purpose: Calc the quasi-static bearing capacity (qsbc) for this particular drop and store it in the selected bearing_df
                  with a unique name using the k-factor or a user input
         """
 
         velocity = self.impulse_df["velocity"]
-
-        if bearing_name is None:
-            dynamic_bearing = self.bearing_df[self.qDyn_bearing_col_name]
-        else:
-            dynamic_bearing = self.bearing_df[bearing_name]
-
+        bearing_name = self.make_qDyn_name(area_type)
+        
+        dynamic_bearing = self.bearing_dfs[area_type][bearing_name]
+            
         quasi_static_bearing = calc_qs_bearing_capacity(velocity=velocity, strainrateCorrectionType=strain_rate_correc_type,
                                                         qDyn = dynamic_bearing, k_factor=k_factor, ref_velocity= ref_velocity)
         
         # Construct the name 
         if use_k_name:
             # Construct the column name appending the k factor to make it unique 
-            col_name = "qsbc_{}_{}".format(self.pffp_config["area_type"][:4], k_factor)
+            col_name = "qsbc_{}_{}".format(area_type[:4], k_factor)
         else:
             col_name = "qsbc_" + str(other_name)
         
@@ -410,11 +412,17 @@ class Drop:
         self.ref_velocities[col_name] = ref_velocity
 
         # Store the column in the df
-        self.bearing_df[col_name] = quasi_static_bearing
-
-    def calc_drop_dynamic_bearing(self, gravity = GRAVITY_CONST, rho_w = 1020, other_name = None):
+        self.bearing_dfs[area_type][col_name] = quasi_static_bearing
+        
+    @staticmethod
+    def make_qDyn_name(area_type):
+        # TODO: Generalize this function in the future
+        """Make the qDyn column name"""
+        return "qDyn_{}".format(area_type)
+    
+    def calc_drop_dynamic_bearing(self, area_type, gravity = GRAVITY_CONST, rho_w = 1020):
         """
-        Purpose: Calc the dynamic bearing capacity (qsbc) for this particular drop and store it in the self.bearing_df 
+        Purpose: Calc the dynamic bearing capacity (qsbc) for this particular drop and store it in the selected bearing_df 
         """
 
         # Temp store the necessary parameters
@@ -425,22 +433,15 @@ class Drop:
         mass = pffp_props.loc[pffp_props["Properties"] == "pffp_mass"][tip_val_col].iloc[0]
         volume = pffp_props.loc[pffp_props["Properties"] == "pffp_volume"][tip_val_col].iloc[0]
         
-        if other_name is None:
-            contact_area_col_name = "{}_{}".format("contact_area", self.pffp_config["area_type"])
-            bearing_col_name = "{}_{}".format("qDyn", self.pffp_config["area_type"])
-
-        else:
-            contact_area_col_name = "{}_{}".format("contact_area", other_name)
-            bearing_col_name = "{}_{}".format("qDyn", other_name)
-
-        # Store the latest bearing column name
-        self.qDyn_bearing_col_name = bearing_col_name
+        contact_area_col_name = "{}_{}".format("contact_area", area_type)
+        bearing_col_name = self.make_qDyn_name(area_type)
 
         # Check that the water drop value is set
         if self.water_drop is None:
             raise ValueError("To calculate the dynamic bearing capacity the flag for deciding if the drop is in water or not must be set")
         
-        contact_area = self.bearing_df[contact_area_col_name]
+        contact_area = self.bearing_dfs[area_type][contact_area_col_name]
+        
 
         # Calc the dynamic bearing capacity
         qDyn = calc_dyn_bearing_capacity(pffp_accel=accel, pffp_mass=mass, contact_area=contact_area, pffp_volume=volume,
@@ -448,8 +449,8 @@ class Drop:
         
         
         # Store the dynamic bearing capcity result
-        self.bearing_df[bearing_col_name] = qDyn
-
+        self.bearing_dfs[area_type][bearing_col_name] = qDyn
+        
     def get_pffp_tip_values(self, pffp_id, tip_type, date_string, file_dir):
         """
         Purpose: Read and store the tip values
@@ -513,24 +514,29 @@ class Drop:
              row = df.loc[df[properties_col_name] == label]
              row_index = df.index[df['Properties'] == label].tolist()
      
-             # Store the value
-             val = row[val_col_name]
-     
+             # Store the value (using iloc so val isn't a series)
+             val = row[val_col_name].iloc[0]
+        
              # Store the unit
              length_unit = row["units"].iloc[0]
      
              # Convert the unit and store the value back in the df
-             df[val_col_name][row_index] = convert_length_units(val, length_unit, self.units["displacement"])
+             self.pffp_config["tip_props"].loc[row_index, val_col_name] = convert_length_units(val, length_unit, self.units["displacement"])
      
-             df["units"][row_index] = self.units["displacement"]
+             self.pffp_config["tip_props"].loc[row_index, "units"] = self.units["displacement"]
             
     def calc_drop_contact_area(self, area_type):
 
         """
         Purpose: Calc the contact area for bearing capacity calculations
         """
-        # Store the area_type
-        self.pffp_config["area_type"] = area_type 
+        if not area_type in ["projected", "mantle"]:
+            # Raise an error if an erroneuos input
+            raise ValueError("Area type {} is not implemented".format(area_type))
+
+        if self.bearing_dfs[area_type] is None:
+            # Init the df
+            self.bearing_dfs[area_type] = pd.DataFrame()
         
         # Temp storage of the df
         tip_props = self.pffp_config["tip_props"]
@@ -543,15 +549,12 @@ class Drop:
         # Calc the contact area
         contact_area = calc_pffp_contact_area(penetrationDepth=displacement, areaCalcType= area_type, tipType= tip_type, tipProps= tip_props, 
                                               tip_val_col= self.pffp_config["tip_col_name"])
-
+        # make the contact area column name
         col_name = "{}_{}".format("contact_area", area_type)
 
-        # Store the contact area
-        if self.bearing_df is None:
-            self.bearing_df = pd.DataFrame(data = {col_name:contact_area}) 
-        else:
-            self.bearing_df[col_name] = contact_area
-
+        # Add the data to the df
+        self.bearing_dfs[area_type][col_name] = contact_area
+    
     # Plotting functions
     def quick_view_impulse(self, interactive = True, figsize= [12, 8], legend = False):
         # Purpose: Provide a quick view of impulse
@@ -775,12 +778,11 @@ class Drop:
 
         df.to_csv(name, index = index)
 
-    def output_bearing_data(self, folder_dir = "", file_name = None, index = False):
+    def output_bearing_data(self, df, folder_dir = "", file_name = None, index = False):
         """
         Purpose: Output bearing capacity data to a specified file format
         """
 
-        
         # If no file name was inputted
         if file_name is None:
             containing_file = self.containing_file.replace(".bin", "")
@@ -790,9 +792,7 @@ class Drop:
         else:
             raise ValueError("Inputting an alternate name for this file is not implemented at this time")
 
-        # Temp storage of the df
-        df = self.bearing_df
-
+        # Store the passed df
         df.to_csv(name, index = index)
 
 if __name__ == "__main__":

@@ -36,10 +36,16 @@ class RandForest:
         return output
 
     @staticmethod
-    def plot_prediction(data, labels= ['Class 1','Class 2','Class 3','Class 4'], title = "", fig_size = [6, 4]):
+    def plot_prediction(data, labels= ['Class 1','Class 2','Class 3','Class 4'], title = "", fig_size = [6, 4], save=None, name = None):
         """
         ## Purpose: Plot the prediction data
         """
+
+        if save is None:
+            save = False
+        
+        if name is None:
+            name = "output_class_plot"
 
         fig, axs = plt.subplots(ncols=1, nrows = 1, figsize = fig_size)
         # Plot the data
@@ -51,6 +57,11 @@ class RandForest:
 
         axs.set_xlabel("Classes")
         axs.set_ylabel("Predicted Probability")
+
+        plt.tight_layout()
+        if save:
+            fig.savefig(name, dpi=300)
+
         plt.show()
 
 if __name__ == "__main__":
