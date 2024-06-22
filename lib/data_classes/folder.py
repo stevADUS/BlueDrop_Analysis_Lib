@@ -1,63 +1,81 @@
-import os
-import datetime
-import fnmatch
-import glob
-from pathlib import Path
-import pandas as pd
+import os  # Import the os module for operating system functions
+import datetime  # Import the datetime module for handling dates and times
+import fnmatch  # Import fnmatch module for filename matching
+import glob  # Import glob module for pathname matching
+from pathlib import Path  # Import Path class from pathlib module
+import pandas as pd  # Import pandas library
 
-from lib.data_classes.pffpFile import pffpFile
+from lib.data_classes.pffpFile import pffpFile  # Import pffpFile class from lib.data_classes.pffpFile module
 
 
 class Folder:
-    # Purpose: Base class for folders
+    """
+    Base class for folders.
+    """
 
     def __init__(self, folder_dir):
-        # Init the instance  varaibles
-        self.folder_dir = folder_dir
+        """
+        Initialize the Folder object with folder directory.
 
-    
-    # Define output string
+        Inputs:
+        - folder_dir: The directory path of the folder.
+        """
+        self.folder_dir = folder_dir  # Store the folder directory
+
     def __str__(self):
+        """
+        Define the string representation of the Folder object.
+        """
         return f"Folder dir: {self.folder_dir}"
-    
-    # Get the 
-    def get_num_files(self,  file_extension, recursive):
-        # Purpose: Get the number of files in a folder
-        
-        # Get the number of files of type file extension
-        # count = len(list(Path(self.folder_dir).glob(f'*{file_extension}')))
-        
-        count = len(glob.glob(self.folder_dir + "/*" + file_extension, recursive=True))
-        # return the values
+
+    def get_num_files(self, file_extension, recursive):
+        """
+        Get the number of files in a folder with a specific file extension.
+
+        Inputs:
+        - file_extension: The file extension (e.g., '.txt', '.csv').
+        - recursive: Boolean flag to indicate whether to search subdirectories recursively.
+
+        Returns:
+        - count: The number of files with the specified extension.
+        """
+        # Count files matching the file extension in the folder
+        count = len(glob.glob(self.folder_dir + "/*" + file_extension, recursive=recursive))
         return count
 
-    def get_directories_by_extension(self, file_extension, recursive, subfolder = ""):
+    def get_directories_by_extension(self, file_extension, recursive, subfolder=""):
+        """
+        Get a list of file directories with a specific file extension in the folder.
 
-        # recursive: allows you to not check all of the subfolders
-        # subfolder: allows you to search a specific subfolder
-         
+        Inputs:
+        - file_extension: The file extension (e.g., '.txt', '.csv').
+        - recursive: Boolean flag to indicate whether to search subdirectories recursively.
+        - subfolder: Optional subfolder name to search within.
+
+        Returns:
+        - file_dirs: List of file directories matching the criteria.
+        """
         file_dirs = []
 
+        # Handle subfolder path construction
         if subfolder != "":
             subfolder = "/" + subfolder
-         
-        # TODO: if the first character is a "." strip it
-        if recursive: 
-            # Check the subfolders
-            for file in glob.glob(self.folder_dir + subfolder + "/**/*." + file_extension, recursive = True):
+
+        # Handle recursive search based on the flag
+        if recursive:
+            # Search recursively for files matching the extension
+            for file in glob.glob(self.folder_dir + subfolder + "/**/*." + file_extension, recursive=True):
                 file_path = os.path.join(self.folder_dir, file)
                 file_dirs.append(file_path)
-            print(file_dirs)
         else:
-            # Only check only the selceted folder
+            # Search in the specified subfolder for files matching the extension
             for file in glob.glob(self.folder_dir + subfolder + "/*." + file_extension):
                 file_path = os.path.join(self.folder_dir, file)
                 file_dirs.append(file_path)
 
         return file_dirs
 
+
 if __name__ == "__main__":
     # Add some testing here
     pass
-
-

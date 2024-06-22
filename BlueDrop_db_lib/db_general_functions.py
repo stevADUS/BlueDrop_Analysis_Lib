@@ -1,5 +1,5 @@
-import datetime
-import sqlite3
+import datetime  # Import the datetime module for handling dates and times
+import sqlite3  # Import sqlite3 module for SQLite database operations
 
 def convert_to_iso_datetime(dt):
     """
@@ -14,6 +14,16 @@ def convert_to_iso_datetime(dt):
     return dt.isoformat()
 
 def table_exists(table_name, db_name):
+    """
+    Check if a table exists in a SQLite database.
+    
+    Parameters:
+        table_name (str): The name of the table to check.
+        db_name (str): The filename (including path) of the SQLite database.
+    
+    Returns:
+        bool: True if the table exists, False otherwise.
+    """
     try:
         # Connect to the database
         conn = sqlite3.connect(db_name)
@@ -33,10 +43,22 @@ def table_exists(table_name, db_name):
         return False
     
 def get_bearing_names(columns):
-        contact_area_name = [s for s in columns if "contact_area_" in s][0]
-        qDyn_name = [s for s in columns if "qDyn_" in s][0]
-        qsbc_names = [s for s in columns if "qsbc_" in s]
-        return contact_area_name, qDyn_name, qsbc_names
+    """
+    Extract specific column names related to bearing measurements.
+    
+    Parameters:
+        columns (list): List of column names.
+    
+    Returns:
+        tuple: A tuple containing:
+            - contact_area_name (str): Name of the contact area column.
+            - qDyn_name (str): Name of the qDyn column.
+            - qsbc_names (list): List of names of the qsbc columns.
+    """
+    contact_area_name = [s for s in columns if "contact_area_" in s][0]
+    qDyn_name = [s for s in columns if "qDyn_" in s][0]
+    qsbc_names = [s for s in columns if "qsbc_" in s]
+    return contact_area_name, qDyn_name, qsbc_names
     
 # Example usage:
 if __name__ == "__main__":

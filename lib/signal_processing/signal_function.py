@@ -2,7 +2,15 @@ import numpy as np
 from scipy.signal import find_peaks
 
 def find_drops(accel_data, impact_time_tol = 0.015, sample_freq = 120_000, min_peak_height = 2.8):
-# Purpose: Get the number of drops in the a file
+    """
+    Purpose: Get the number of drops in the a file by findng the peaks in the data
+    
+    where:
+        accel_data: array of acceleration data
+        impact_time_tol: the assumed minimum time between drops
+        sample_freq: Number of samples collected in a minute
+        min_peak_height: Minimum acceleration measurement that should be considered a drop (Measured in g's) 
+    """
         
     # Calc assumed tolerance for the length of impact
     impact_window = impact_time_tol * sample_freq
@@ -14,10 +22,13 @@ def find_drops(accel_data, impact_time_tol = 0.015, sample_freq = 120_000, min_p
     return drop_indexs, drop_info, num_drops
 
 def check_peaks_in_data(accel_data, height_range = 2.8):
-    # Purpose: Check if a drop is in the file - for the
-    # height_range: Can be a two element list or a single value. If list first val is minimum and second is the maximum for the peak
-    #               if single value its interpreted as the minimum for peak classification
-
+    """
+    Purpose: Check if a drop is in the file - for the
+    
+    where: 
+        height_range: Can be a two element list or a single value. If list first val is minimum and second is the maximum for the peak
+                  if single value its interpreted as the minimum for peak classification
+    """
     peaks_indices, peak_dict_info = find_peaks(accel_data, height = height_range)
     
     if len(peaks_indices) > 0:
@@ -29,10 +40,13 @@ def check_peaks_in_data(accel_data, height_range = 2.8):
     
 # Function to do a moving average
 def moving_average(data, window_size):
-    # Purpose: Calc the moving average of the data using set window size
+    """
+    Purpose: Calc the moving average of the data using set window size
 
-    # data: Data that should be smoothed/averaged
-    # window_size: Number of values to consider +/- in the averaging
+    where:
+        data: the array that the window average is going to be calculated for
+        window_size: Width of the window in indices of the array
+    """
 
     # Convert the data to np array
     data = np.array(data)
@@ -42,14 +56,16 @@ def moving_average(data, window_size):
     return averaged_data[window_size-1:]/window_size
 
 def find_deriv_change(x, y, cutoff, greater = True):
-    # Purpose: Find the derivative of the x,y data a determine the location where the derivative reaches the threshold
+    """
+    Purpose: Find the derivative of the x,y data a determine the location where the derivative reaches the threshold
 
-    # x: Array of independent data
-    # y: Array of dependent data
-    # greater: Determines if a search from greater than or less than the cutoff
+    where:
+        x: Array of independent data
+        y: Array of dependent data
+        greater: Determines if a search from greater than or less than the cutoff
 
-    # Info: np.gradient uses second order central differencing on the interior and first order accurate differencing on the boundaries
-    
+    NOTE: np.gradient uses second order central differencing on the interior and first order accurate differencing on the boundaries
+    """
     # Calc the derivative
     derivative = np.gradient(y, x)
     

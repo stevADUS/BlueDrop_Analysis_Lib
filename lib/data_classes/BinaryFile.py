@@ -7,6 +7,10 @@ from lib.data_classes.Type_Mixin import TypeMixin
 
 # Binary file class inherits the File class and the TypeMixin
 class BinaryFile(File, TypeMixin):
+    """
+    Pupose: The BinaryFile class is used to represent any type of binary file.
+            it contains modules that read and convert binary file to dfs.
+    """
     # Purpose define properties of binary files
 
     def __init__(self, file_dir):
@@ -17,7 +21,13 @@ class BinaryFile(File, TypeMixin):
         return f"File Directory: {self.file_dir}"
     
     def read_binary(self, size_byte = 3):
-        # Purpose: Read a binary file and store it in an arr
+        """
+        Purpose: Read a binary file and store it in an arr
+        
+        where:
+            size_byte: number of bytes that should be read at a time.
+                In terms of the PFFP binary files this corresponds to the number of bytes a number is represented by
+        """
         #TODO: maybe convert the binary right away. You have to unwrap the data again the way it is right now
         
         # Init the arr
@@ -33,7 +43,16 @@ class BinaryFile(File, TypeMixin):
         return binary_arr
 
     def binary_file_2_df(self, column_names, num_columns, num_rows = -1, size_byte = 3, byte_order = "big", signed = True):
-        # Purpose: Read the file and store the data in a df
+        """
+        ### Purpose: Read a binary file and store the data in a df
+
+        #### where:
+        column_names: columns names for the created df
+        num_columns: Number of columns that should be in the new df
+        num_rows: Number of the rows in the new df (preset to -1 so that the value is implicit) 
+        size_byte: Number of bytes that should be read at once (This is the number of bytes that make up a value)
+        byte_order: Defines how the bytes of a binary number are arranged in memory. For PFFP binary files the byte_order is "big"
+        """
 
         # Read the binary file
         binary_arr = self.read_binary(size_byte)

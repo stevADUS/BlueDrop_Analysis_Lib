@@ -5,12 +5,16 @@ import numpy as np
 
 # Firmness factor
 def calc_firmness_factor(gravity, max_deceleration, total_penetration_time, impact_velocity):
-    # Purpose: Calc the firmness factor (FF) of the soil
-    # Eqn. FF = a_{max}/(  g * t_{p} * v_{i}) 
-    # Link to paper: https://link.springer.com/article/10.1007/s11001-011-9116-2
+    """
+    Purpose: Calc the firmness factor (FF) of the soil
+    Eqn.:
+        FF = a_{max}/(  g * t_{p} * v_{i}) 
+    
+    Link to paper: https://link.springer.com/article/10.1007/s11001-011-9116-2
 
-    # NOTE: Not a dimensionless parameter
-     
+    NOTE: Not a dimensionless parameter
+    """
+
     return max_deceleration/(gravity * total_penetration_time * impact_velocity)                                           
 
 if __name__ == "__main__":

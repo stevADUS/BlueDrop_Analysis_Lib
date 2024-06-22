@@ -2,8 +2,7 @@
 import numpy as np
 
 # Lib imports
-from lib.general_functions.global_constants import GRAVITY_CONST
-from lib.mechanics_functions.fluid_funcs import calc_buoyant_force, calc_drag_force
+from lib.general_functions.global_constants import GRAVITY_CONST, DEBUG
 
 def calc_air_drop_dyn_bearing(pffp_accel, pffp_mass, contact_area, gravity):
     """

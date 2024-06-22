@@ -11,7 +11,7 @@ def calc_pffp_contact_area(penetrationDepth, areaCalcType, tipType, tipProps, ti
     """
     Purpose: Wrapper for the contact area functions for all cones
     NOTE: Assumes a consistent set of units
-    Inputs:
+    where:
         penetrationDepth: Array of depths the FFP has penetrated, 
         areaCalcType: "mantle or projected"
         tipType: blunt or cone tip type       
@@ -50,13 +50,16 @@ def calc_pffp_contact_area(penetrationDepth, areaCalcType, tipType, tipProps, ti
 #TODO: Could use a mask to calc the values for the whole array that is below the tipHeight and init array for the part that is above
 
 def calcFFPConeContactArea(penetrationDepth, tipHeight, baseRadius, coneTipRadius, areaCalcType):
-    # Function calculates the contact area for the cone top of the FFP
+    """ 
+    Purpose: calculates the contact area for the cone top of the FFP
 
-    # penetrationDepth: Array of penetration depth values
-    # baseRadius: Radius of the Cone at the base (Circular side)
-    # coneTipRadius: Radius of the cone tip (is not zero)
-    # tipHeight: Height of the cone when measured normal to the circular base
-    # areaCalcType: Selection of mantle or projected
+    where:
+        penetrationDepth: Array of penetration depth values
+        baseRadius: Radius of the Cone at the base (Circular side)
+        coneTipRadius: Radius of the cone tip (is not zero)
+        tipHeight: Height of the cone when measured normal to the circular base
+        areaCalcType: Selection of mantle or projected
+    """
 
     # Init array to store area
     area = np.ones(len(penetrationDepth))
@@ -89,7 +92,15 @@ def calcFFPConeContactArea(penetrationDepth, tipHeight, baseRadius, coneTipRadiu
     return area
 
 def calcFFPBluntContactArea(penetrationDepth, tipHeight, baseRadius, areaCalcType):
-
+    """
+    Purpose: Calc contact area for the blunt pffp tip
+    
+    where:
+        penetrationDepth: Array of penetration depth values
+        tipHeight: Height of the tip measured normal to the circular base
+        baseRadius: Radius of the Cone at the base (Circular side)
+        areaCalcType: Selection of mantle or projected
+    """
     # init array to store area calcs
     area = np.zeros(len(penetrationDepth))
 
@@ -118,10 +129,16 @@ def calcFFPBluntContactArea(penetrationDepth, tipHeight, baseRadius, areaCalcTyp
     return area
 
 def calcParabolicContactArea(penetrationDepth, tipHeight, areaCalcType, radius_coeff = 2.4184):
-    # Purpose: Calc the contact area for the parabolic type of  the bluedrop
-    # radius_coeff: The coefficient required to calc the radius of the parabola from the depth of penetration
-    #               radius = \sqrt{depth/a} where a is from the parabola eqn. depth = a * radius^{2}
+    """
+    Purpose: Calc the contact area for the parabolic type of  the bluedrop
 
+    where:
+    penetrationDepth: Array of penetration depth values
+    tipHeight: Height of the tip measured normal to the circular base
+    areaCalcType: Selection of mantle or projected
+    radius_coeff: The coefficient required to calc the radius of the parabola from the depth of penetration
+                  radius = \sqrt{depth/a} where a is from the parabola eqn. depth = a * radius^{2}
+    """
     # init array to store the area calcs
     area = np.zeros(len(penetrationDepth))
 
