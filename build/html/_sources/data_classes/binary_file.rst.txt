@@ -1,4 +1,6 @@
-.. _binary_file:
+Binary File Class
+^^^^^^^^^^^^^^^^^^
+   .. _binary_file:
 
 .. automodule:: data_classes.BinaryFile
    :members:
