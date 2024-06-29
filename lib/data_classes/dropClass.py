@@ -9,7 +9,7 @@ import datetime
 
 from lib.data_classes.exceptions import zeroLenError
 from lib.signal_processing.signal_function import moving_average
-from lib.general_functions.general_function import convert_accel_units, convert_time_units, convert_mass_units, convert_length_units
+from lib.general_functions.helper_functions import convert_accel_units, convert_time_units, convert_mass_units, convert_length_units
 from lib.general_functions.global_constants import GRAVITY_CONST, ALLOWED_TIP_TYPES_LIST
 from lib.mechanics_functions.bearing_capacity_funcs import calc_dyn_bearing_capacity, calc_qs_bearing_capacity
 from lib.pffp_functions.cone_area_funcs import calc_pffp_contact_area
@@ -420,19 +420,30 @@ class Drop:
         """Make the qDyn column name"""
         return "qDyn_{}".format(area_type)
     
-    def calc_drop_dynamic_bearing(self, area_type, gravity = GRAVITY_CONST, rho_w = 1020):
+    def calc_drop_dynamic_bearing(self, area_type, gravity = GRAVITY_CONST, rho_water = 1020, rho_air = 1.293, drag_coeff = 1.0):
         """
         Purpose: Calc the dynamic bearing capacity (qsbc) for this particular drop and store it in the selected bearing_df 
+
+        Inputs:
+            area_type : Type of area calculation (mantle or projected)
+            gravity   : Gravity constant
+            rho_water : Density of water
+            rho_air   : Density of air
+            drag_coeff: Drag coeff of the pffp
         """
 
         # Temp store the necessary parameters
         accel = self.impulse_df["accel"]
+        velocity = self.impulse_df["velocity"]
         pffp_props = self.pffp_config["tip_props"]
         tip_val_col = self.pffp_config["tip_col_name"]
 
         mass = pffp_props.loc[pffp_props["Properties"] == "pffp_mass"][tip_val_col].iloc[0]
         volume = pffp_props.loc[pffp_props["Properties"] == "pffp_volume"][tip_val_col].iloc[0]
         
+        # Using tha base radius as the frontal area for the drag force calc
+        pffp_frontal_area = pffp_props.loc[pffp_props["Properties"] == "base_radius"][tip_val_col].iloc[0]
+
         contact_area_col_name = "{}_{}".format("contact_area", area_type)
         bearing_col_name = self.make_qDyn_name(area_type)
 
@@ -442,11 +453,10 @@ class Drop:
         
         contact_area = self.bearing_dfs[area_type][contact_area_col_name]
         
-
-        # Calc the dynamic bearing capacity
-        qDyn = calc_dyn_bearing_capacity(pffp_accel=accel, pffp_mass=mass, contact_area=contact_area, pffp_volume=volume,
-                                         water_drop=self.water_drop, gravity=gravity, rho_w = rho_w)
-        
+        qDyn = calc_dyn_bearing_capacity(pffp_accel = accel, pffp_velocity = velocity, pffp_mass = mass, 
+                                         pffp_frontal_area = pffp_frontal_area, soil_contact_area = contact_area,
+                                         pffp_volume = volume, water_drop = self.water_drop, drag_coeff = drag_coeff, 
+                                         gravity = gravity, rho_water = rho_water, rho_air = rho_air)
         
         # Store the dynamic bearing capcity result
         self.bearing_dfs[area_type][bearing_col_name] = qDyn
@@ -637,7 +647,7 @@ class Drop:
             plt.tight_layout()
 
             plt.show()
-
+            
     def quick_view_release(self, interactive = True, figsize = [12, 8], legend = False):
         # Purpose: Provide a quick view of the full release
 

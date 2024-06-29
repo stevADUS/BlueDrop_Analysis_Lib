@@ -5,88 +5,195 @@ import numpy as np
 from lib.general_functions.global_constants import GRAVITY_CONST
 
 def calc_consolidation_coeff(diameter, t_50, T_50 = 0.6):
-    """"
-    Calc the consolidation coeff (c_{h})
+    """
+    Calculate the consolidation coefficient (c_h).
+
+    This function computes the consolidation coefficient based on the given diameter, time to 50% pore pressure
+    dissipation, and a dimensionless time factor.
+
+    Parameters
+    ----------
+
+    diameter : float
+        Diameter of the penetrating object [m].
+    t_50 : float
+        Time to 50% of pore pressure dissipation [s].
+    T_50 : float, optional
+        Dimensionless time factor (default is 0.6).
+
+    Returns
+    -------
+
+    float
+        Consolidation coefficient [m^2/s].
+
+    Notes
+    -----
+
+    The consolidation coefficient is calculated using the following equation:
     
-    Paper: White, D. J., et al. "Free fall penetrometer tests in sand: Determining the equivalent static resistance.
-    Eqn:
-        c_{h} = \frac{D^{2} T_{50}}{t_{50}}
-    
+    .. math::
+        c_{h} = \\frac{D^{2} T_{50}}{t_{50}}
+
     where:
-        D: Diameter of the penetrating object
-        t_50: Time to 50% of pore pressure dissipation
-        T_50: Dimensionless time
+        - :math:`D` is the diameter of the penetrating object.
+        - :math:`t_{50}` is the time to 50% of pore pressure dissipation.
+        - :math:`T_{50}` is the dimensionless time factor.
+
+    Reference
+    ---------
+    
+    White, D. J., et al. "Free fall penetrometer tests in sand: Determining the equivalent static resistance."
+    
     """
 
     return diameter**2 * T_50/t_50
 
 def calc_dimensionless_velocity(v, D, coeff_consolidation):
     """
-    Calc the dimensionless velocity (V)
+    Calculate the dimensionless velocity (V).
+
+    Parameters
+    ----------
+
+    v : float
+        Probe velocity [m/s].
+    D : float
+        Diameter of the probe [m].
+    coeff_consolidation : float
+        Consolidation coefficient (c_{h}).
+
+    Returns
+    -------
+
+    float
+        Dimensionless velocity (V).
+
+    Notes
+    -----
+
+    The dimensionless velocity is calculated using the equation:
     
-    Eqn:
-        V = v D/c_{h}
-        
+    .. math::
+        V = \\frac{v \\cdot D}{c_{h}}
+    
     where:
-        V    : Dimensionless velocity
-        v    : Probe velocity
-        D    : Diameter of the probe
-        c_{h}: Consolidation coefficient
+    
+        - :math:`V`     : Dimensionless velocity.
+        - :math:`v`     : Probe velocity.
+        - :math:`D`     : Diameter of the probe.
+        - :math:`c_{h}` : Consolidation coefficient.
+
     """
 
     return v * D/coeff_consolidation
 
 def calc_cambridge_mean_eff_stress(sigma_1, sigma_2, sigma_3):
-
     """
-    Calc cambridge mean effective stress
+    Calculate the Cambridge mean effective stress (p').
 
-    Eqn:
-        p' = (\sigma'_{1} + \sigma'_{2} + \sigma'_{3})/3
+    Parameters
+    ----------
 
+    sigma_1 : float
+        Effective stress 1.
+    sigma_2 : float
+        Effective stress 2.
+    sigma_3 : float
+        Effective stress 3.
+
+    Returns
+    -------
+
+    float
+        Cambridge mean effective stress (p').
+
+    Notes
+    -----
+
+    The Cambridge mean effective stress is calculated using the equation:
+    
+    .. math::
+        p' = \\frac{{\sigma'_{1} + \sigma'_{2} + \sigma'_{3}}}{{3}}
+    
     where:
-        sigma_{1}: Effective stress 1
-        sigma_{2}: Effective stress 2
-        sigma_{3}: Effective stress 3
+        - :math:`p'`           : Cambridge mean effective stress.
+        - :math:`\\sigma'_{1}` : Effective stress 1.
+        - :math:`\\sigma'_{3}` : Effective stress 3.
+        - :math:`\\sigma'_{2}` : Effective stress 2.
+
     """
 
     return (sigma_1 +sigma_2 + sigma_3)/3
 
 def calc_white_failure_mean_eff_stress(relative_density, Q = 10):
     """
-    Calc the mean effective stress at failure.
+    Calculate the mean effective stress at failure (p'_{f}).
+
+    Parameters
+    ----------
+
+    Q : float
+        Crushing strength parameter. Commonly taken as 10.
+    relative_density : float
+        Relative density.
+
+    Returns
+    -------
+
+    float
+        Mean effective stress at failure (p'_{f}) [kPa].
+
+    Notes
+    -----
+
+    The mean effective stress at failure is calculated using the equation:
     
-    Eqn:
-        p'_{f} = e^{ Q - 1/I_{D} }
+    .. math::
+        p'_{f} = e^{Q - \\frac{1}{I_{D}}}
     
     where:
-        p'_{f}: Mean effective stress at failure [kPa]
-        Q     : Crushing strength parameter, Commonly taken as 10
-        I_{D} : relative density
+        - :math:`p'_{f}` : Mean effective stress at failure.
+        - :math:`Q`      : Crushing strength parameter.
+        - :math:`I_{D}`  : Relative density.
 
-    
-    NOTE: This equation was taken from 
-          I_{R} = I_{D} (D - ln(p')) - 1 (Bolton (1986))
-          assuming relative dilatancy is zero 0 (I_{R}= 0) at undrained failure
+    Note that the equation derivation assumes zero relative dilatancy (I_{R} = 0) at undrained failure.
+
     """
 
     return np.exp( Q - 1/relative_density)
 
 def calc_mohr_coulomb_su(failure_mean_eff_stress, phi_cv = 32):
     """
-    Calc the undrained strength (su) assuming a mohr-coulomb failure envelope
-    
-    inputs:
-        failure_mean_eff_stress: Mean effective stress at failure
-        phi_cv                 : Friction angle at constant volume
+    Calculate the undrained strength (s_{u}) assuming a Mohr-Coulomb failure envelope.
 
-    Eqn:
-        s_{u} = 1/2 p'_{f} \frac{ 6 sin(\phi_{cv}) }{3 - sin(\phi_{cv}) }
+    Parameters
+    ----------
+
+    failure_mean_eff_stress : float
+        Mean effective stress at failure [kPa].
+    phi_cv : float
+        Friction angle at constant volume [degrees].
+
+    Returns
+    -------
+
+    float
+        Undrained strength (s_{u}) [kPa].
+
+    Notes
+    -----
+
+    The undrained strength is calculated using the equation:
     
+    .. math::
+        s_{u} = \\frac{1}{2} p'_{f} \\frac{6 \\sin(\\phi_{cv})}{3 - \\sin(\\phi_{cv})}
+
     where:
-        s_{u}   : Undrained Strength
-        p'_{f}  : Mean effective stress at failure 
-        phi_{cv}: Friction angle at constant volume
+        - :math:`s_{u}`     : Undrained strength.
+        - :math:`p'_{f}`    : Mean effective stress at failure.
+        - :math:\\phi_{cv}` : Friction angle at constant volume (in degrees).
+
     """
 
     # Convert phi to radians
@@ -97,7 +204,11 @@ def calc_mohr_coulomb_su(failure_mean_eff_stress, phi_cv = 32):
 
     return 0.5 * failure_mean_eff_stress * inside
 
-
+"""
+TODO: These are the functions that I want to add:
+    - Jaky 1- sin(phi')
+    - k0 as a function of effective stress (Never total stress)
+    - """
 
 if __name__ == "__main__":
     # Add some testing here

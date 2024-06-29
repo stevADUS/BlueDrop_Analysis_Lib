@@ -6,6 +6,9 @@ PI_CONST =  np.pi
 ALLOWED_TIP_TYPES_LIST = ["cone", "parabola", "blunt"]
 DEBUG = True
 
+def test_func():
+    pass
+
 if __name__ == "__main__":
     # Add some testing here
     pass

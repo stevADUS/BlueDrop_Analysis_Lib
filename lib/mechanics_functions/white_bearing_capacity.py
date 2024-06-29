@@ -12,6 +12,7 @@ from lib.mechanics_functions.relative_density_funcs import calc_Jamiolkowski_rel
 def calc_qNet_dyn_at_vel(qNet_d_guess,  qNet_dyn, depth, relative_density, measured_velocity, coeff_consolidation,
                 V_50 = 1, Q = 10, wanted_velocity = 0.02, probe_diameter = 1, phi_cv = 32, Nkt = 12, 
                 calc_relative_density = False):
+    
     """
     Calc the equivalent CPT bearing capacity at a given depth
 
@@ -24,6 +25,7 @@ def calc_qNet_dyn_at_vel(qNet_d_guess,  qNet_dyn, depth, relative_density, measu
         V_50                 : Time to ???
         Q                    : Crushing coeff ???
         wated_velocity       : Velocity that q is wanted at
+
     """
 
     # Calc the current dimensionless velocity
@@ -62,24 +64,39 @@ def calc_qNet_dyn_at_vel(qNet_d_guess,  qNet_dyn, depth, relative_density, measu
 
     return wanted_qNet_dyn
 
-def calc_white_qNet_dyn(qNet_ud, qNet_d, V, V_50 = 1.0):
+def calc_white_qNet_dyn(qNet_ud, qNet_d, V, V_50=1.0):
     """
-    Calc the net dynamic bearing resistance q_{net, dyn}. Also refered to as the "backbone curve"
+    Calculate the net dynamic bearing resistance q_{net, dyn}, also referred to as the "backbone curve".
 
-    Paper: White, D. J., et al. "Free fall penetrometer tests in sand: Determining the equivalent static resistance. 
-      
-    Eqn:
-        q_{net, dyn} = q_{net, ud} + (q_{net, d} - q_{net, ud}) \frac{1}{1 + V/V_{50}}
-    
-    where:
-        q_{net, dyn}: Net dynamic bearing resistance
-        q_{net, ud} : Net undrained bearing resistance
-        q_{net, d}  : Net drained bearing resistance
-        V           : Dimensionless velocity defined in White et al. (2018)
-        V_{50}      : ??? Not sure what this is check Randolph and Hope (2004)
+    This function is based on the work of White et al. (2018) and follows the equation:
+
+    .. math::
+        q_{net, dyn} = q_{net, ud} + (q_{net, d} - q_{net, ud}) \\frac{1}{1 + V/V_{50}}
+
+    Parameters
+    ----------
+    qNet_ud : float
+        Net undrained bearing resistance.
+    qNet_d : float
+        Net drained bearing resistance.
+    V : float
+        Dimensionless velocity as defined in White et al. (2018).
+    V_50 : float, optional
+        Parameter related to velocity, default is 1.0. For more details, refer to Randolph and Hope (2004).
+
+    Returns
+    -------
+    float
+        Net dynamic bearing resistance.
+
+    Notes
+    -----
+    For detailed information, refer to the following paper:
+    White, D. J., et al. "Free fall penetrometer tests in sand: Determining the equivalent static resistance."
+
     """
+    return qNet_ud + (qNet_d - qNet_ud) * (1 / (1 + V / V_50))
 
-    return qNet_ud + (qNet_d - qNet_ud) * (1/(1 + V/V_50))
 
 def calc_qNet_undrained(undrained_strength, Nkt = 12):
     """
@@ -94,6 +111,7 @@ def calc_qNet_undrained(undrained_strength, Nkt = 12):
 def find_qNet_dry(qNet_d_guess, qNet_dyn, relative_density, V, V_50 = 1, Q = 10, phi_cv = 32, Nkt = 12):
     """
     Function to serve as the basis for the solver to find the net drained bearing resistance
+
     """
     
     
@@ -114,6 +132,7 @@ def find_qNet_dry(qNet_d_guess, qNet_dyn, relative_density, V, V_50 = 1, Q = 10,
 def find_qNet_dry_2(qNet_d_guess, qNet_dyn, depth, V, V_50 = 1, Q = 10, phi_cv = 32, Nkt = 12):
     """
     Function to serve as the basis for the solver to find the net drained bearing resistance
+
     """
     
     # Calc the relative density

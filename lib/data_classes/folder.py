@@ -3,7 +3,6 @@ import datetime  # Import the datetime module for handling dates and times
 import fnmatch  # Import fnmatch module for filename matching
 import glob  # Import glob module for pathname matching
 from pathlib import Path  # Import Path class from pathlib module
-import pandas as pd  # Import pandas library
 
 from lib.data_classes.pffpFile import pffpFile  # Import pffpFile class from lib.data_classes.pffpFile module
 
@@ -77,5 +76,6 @@ class Folder:
 
 
 if __name__ == "__main__":
-    # Add some testing here
+    from lib.data_classes.folder import Folder
+
     pass

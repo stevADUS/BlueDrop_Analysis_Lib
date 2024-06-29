@@ -6,7 +6,7 @@ import time
 
 from lib.data_classes.folder import Folder
 from lib.data_classes.pffpFile import pffpFile
-from lib.general_functions.general_function import create_folder_if_not_exists, progress_bar
+from lib.general_functions.helper_functions import create_folder_if_not_exists, progress_bar
 from lib.data_classes.exceptions import zeroLenError
 
 class pffpDataFolder(Folder):
@@ -174,8 +174,10 @@ class pffpDataFolder(Folder):
         self.funky_dir = funky_dir
 
     def process_drop_files(self):
-        # Purpose: Process all of the drops in the files that have drops 
-        
+        """
+        Process all of the drops in the files that have drops. This means that drop objects will be created for
+        each drop in the file. To accomplish this the start and end of the drop must be identified.
+        """
         # Print progress bar label
         print("\nProgress processing drops in files...")
         # Loop over the files

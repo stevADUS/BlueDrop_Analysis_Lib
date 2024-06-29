@@ -3,7 +3,7 @@ import numpy as np
 from lib.data_classes.BinaryFile import BinaryFile
 from lib.signal_processing.signal_function import find_drops, moving_average
 from lib.data_classes.dropClass import Drop # Class that is used to represent drops
-from lib.general_functions.general_function import convert_accel_units, convert_time_units, convert_length_units
+from lib.general_functions.helper_functions import convert_accel_units, convert_time_units, convert_length_units
 from lib.data_classes.exceptions import zeroLenError
 
 import plotly.graph_objects as go
