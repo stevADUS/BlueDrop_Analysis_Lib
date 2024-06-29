@@ -10,3 +10,6 @@ __pycache__/
 *.csv
 *.png
 *.pdf
+foo2
+.gitignore
+foo3
