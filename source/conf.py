@@ -7,8 +7,8 @@
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
 project = 'BlueDropAnalysis'
-copyright = '2024, Jonathan Moore'
-author = 'Jonathan Moore'
+copyright = '2024, WaveHello'
+author = 'WaveHello'
 release = '0.0'
 
 # -- General configuration ---------------------------------------------------
