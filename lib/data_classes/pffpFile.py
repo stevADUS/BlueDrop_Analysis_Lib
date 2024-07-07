@@ -169,6 +169,7 @@ class pffpFile(BinaryFile):
             raise ValueError("Onnly converison from psi to kPa implemented")
         return df
     
+    # TODO: Need to modularize this function. This thing is too big
     def analyze_file(self, use_pore_pressure = True, store_df = True, overide_water_drop = False, 
                      select_accel = ["2g_accel", "18g_accel", "50g_accel", "250g_accel"]):
         # Purpose: Analyzes a bin file, gets
@@ -199,6 +200,7 @@ class pffpFile(BinaryFile):
         # Init flag to track if the drop was checked using pressure sensor
         pressure_check_list = []
 
+        # TODO: Need to turn this into multiple functions
         # if use_pore_pressure and np.max(df["pore_pressure"] > 1):
         if use_pore_pressure and np.max(df["pore_pressure"] > 0.5):
             # Init list to store accel indices that need to be deleted
@@ -260,7 +262,7 @@ class pffpFile(BinaryFile):
             pressure_check_list.append(True)
             
         else:
-            #TODO: For the time being just check the 18g sensor in the future multiple sens
+            # Use the concatenated accleration sensor data to fund the drops
             peak_indexs, peak_info, num_accel_drops = find_drops(self.concat_accel)
 
             # Select the times where the peak acceleration thinks drops occured

@@ -223,6 +223,7 @@ class pffpDataFolder(Folder):
         # TODO: Purpose: Given a file name get the index of that file in
             #  pffp_files list
             # pffp_no_drop list or pffp_drop list depending on where it is
+        raise NotImplementedError(" Module hasn't been implemented. Work will be done in the future")
         pass
 
     

@@ -161,7 +161,7 @@ def calc_white_failure_mean_eff_stress(relative_density, Q = 10):
 
     """
 
-    return np.exp( Q - 1/relative_density)
+    return np.exp( Q - 1/relative_density )
 
 def calc_mohr_coulomb_su(failure_mean_eff_stress, phi_cv = 32):
     """
