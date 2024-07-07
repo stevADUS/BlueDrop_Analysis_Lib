@@ -1,5 +1,5 @@
 # To-Do list for the BlueDrop Analysis Library - Analysis side
-
+:thumbsup:
 ## Documentation that needs to be written
 This includes adding paper references for the equations. There needs to be a link between the function and the work that it came from. There needs to be a significant effort to get the source from the original source and confirm that the equation is actually in the original source. Ideally there should be a reference to a page in the reference and an equation number.
 
