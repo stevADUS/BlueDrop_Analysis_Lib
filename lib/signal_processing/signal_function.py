@@ -10,6 +10,12 @@ def find_drops(accel_data, impact_time_tol = 0.015, sample_freq = 120_000, min_p
         impact_time_tol: the assumed minimum time between drops
         sample_freq: Number of samples collected in a minute
         min_peak_height: Minimum acceleration measurement that should be considered a drop (Measured in g's) 
+
+        :return: A tuple containing:
+        - drop_indexs (np.ndarray): Indices of detected drops in the acceleration data.
+        - drop_info (dict): Information about the detected drops, including peak heights.
+        - num_drops (int): The number of detected drops.
+        :rtype: tuple(np.ndarray, dict, int)
     """
         
     # Calc assumed tolerance for the length of impact
