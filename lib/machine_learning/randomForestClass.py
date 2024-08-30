@@ -4,7 +4,44 @@ import numpy as np
 import pandas as pd
 
 class RandForest:
+    """
+    A class used to represent a Random Forest model.
+
+    Attributes
+    
+    ----------
+    name : str
+        The name of the model
+    model_dir : str
+        The directory where the model is stored
+
+    Methods
+    
+    -------
+    __init__(name, model_dir)
+        Initializes the RandForest object with a model name and directory.
+    
+    _load_model_object()
+        Loads the model object from the specified directory.
+    
+    predict_probability(accel_data, max_displacement)
+        Predicts the probability of the input using the loaded model.
+    
+    plot_prediction(data, labels=['Class 1','Class 2','Class 3','Class 4'], title="", fig_size=[6, 4], save=None, name=None)
+        Plots the prediction data.
+    """
     def __init__(self, name, model_dir):
+        """
+        Initializes the RandForest object with a model name and directory.
+
+        Parameters
+
+        ----------
+        name : str
+            The name of the model
+        model_dir : str
+            The directory where the model is stored
+        """
         # Store the model name
         self.name = name
 

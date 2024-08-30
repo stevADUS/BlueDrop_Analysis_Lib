@@ -8,6 +8,46 @@ def calcCylinderSurfaceArea(radius, height):
     where:
         radius: Radius of the cylinder
         height of the cylinder
+
+    Parameters
+
+    ----------
+    radius : float
+        The radius of the cylinder's base, typically in units of length (e.g., meters).
+    height : float
+        The height of the cylinder, typically in units of length (e.g., meters).
+
+    Returns
+
+    -------
+    float
+        The total surface area of the cylinder, typically in square units (e.g., square meters).
+
+    Notes
+
+    -----
+    The total surface area is calculated as the sum of the area of the two circular bases and the area of the lateral surface. The formula used is:
+
+    .. math::
+
+        A_{\text{total}} = 2 \pi r^2 + 2 \pi r h
+
+    where:
+    - :math:`r` is the radius of the cylinder's base.
+    - :math:`h` is the height of the cylinder.
+    - :math:`\pi` is a mathematical constant approximately equal to 3.14159.
+
+    Example
+    
+    -------
+    Calculate the surface area of a cylinder with a radius of 3 units and a height of 5 units:
+
+    >>> radius = 3
+    >>> height = 5
+    >>> surface_area = calcCylinderSurfaceArea(radius, height)
+    >>> print(surface_area)
+    150.79644737231007  # example output
+
     """
     baseArea = PI_CONST * radius**2 # Surface area of the base of the cylinder
     sideArea = 2 * PI_CONST * radius * height # Surface area on the side of the cylinder
