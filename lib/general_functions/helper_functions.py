@@ -7,12 +7,6 @@ from lib.general_functions.global_constants import GRAVITY_CONST
 
 # File Purpose: Store general purpose functions - I will organize this better later
 def create_folder_if_not_exists(folder_path):
-    if not os.path.exists(folder_path):
-        os.makedirs(folder_path)
-        print(f"Folder '{folder_path}' created successfully.")
-    else:
-        print(f"Folder '{folder_path}' already exists.")
-
     """
     Create a folder if it does not already exist.
 
@@ -27,6 +21,13 @@ def create_folder_if_not_exists(folder_path):
     -----
     If the folder already exists, a message is printed indicating so.
     """
+    if not os.path.exists(folder_path):
+        os.makedirs(folder_path)
+        print(f"Folder '{folder_path}' created successfully.")
+    else:
+        print(f"Folder '{folder_path}' already exists.")
+
+
 
 def apply_mask_to_list(values, mask):
     """
