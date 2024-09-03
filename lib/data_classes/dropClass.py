@@ -506,9 +506,11 @@ class Drop:
         mass_unit = row["units"].iloc[0]
 
         # Convert the unit and store the value back in the df
-        df[val_col_name][row_index] = convert_mass_units(mass_val, mass_unit, self.units["mass"])
+        # df[val_col_name][row_index] = convert_mass_units(mass_val, mass_unit, self.units["mass"])
+        
+        df.loc[row_index, val_col_name] = convert_mass_units(mass_val, mass_unit, self.units["mass"])
 
-        df["units"][row_index] = self.units["mass"]
+        df.loc[row_index, "units"] = self.units["mass"]
         
         # List of props that may need to have there units converted
         match self.pffp_config["tip_type"]:

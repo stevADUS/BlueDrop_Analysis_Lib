@@ -224,7 +224,6 @@ class pffpDataFolder(Folder):
             #  pffp_files list
             # pffp_no_drop list or pffp_drop list depending on where it is
         raise NotImplementedError(" Module hasn't been implemented. Work will be done in the future")
-        pass
 
     
 if __name__ == "__main__":

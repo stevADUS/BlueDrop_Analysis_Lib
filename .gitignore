@@ -13,3 +13,4 @@ __pycache__/
 foo2
 .gitignore
 foo3
+.vscode

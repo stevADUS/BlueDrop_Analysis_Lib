@@ -429,6 +429,8 @@ class pffpFile(BinaryFile):
     def manual_indices_selection(self, drop, debug = False, interactive = True, figsize = [12,8], legend = False, lag = 0.1):
         # Purpose: Manually select indices for drops
         
+        # TODO: Add an option so in case the detected drop isn't a real drop, but there are other real drops in the file
+        
         # Print information about the drop
         print(drop)
 
@@ -505,6 +507,7 @@ class pffpFile(BinaryFile):
                 
                 # Find the index that corresponds to the time closest to the input time
                 index = np.where(val <= drop.time)[0][0]
+
             elif input_type == allowed_input_type[1]:
                 index =0.0
                 good_input= False
@@ -533,6 +536,7 @@ class pffpFile(BinaryFile):
             # Checking if 
             integration_type = "None"
             integration_ans = ["y", "n"]
+
             while not integration_type in integration_ans:
                 integration_type = input("Impulse Integration? (y or n)")
                 
