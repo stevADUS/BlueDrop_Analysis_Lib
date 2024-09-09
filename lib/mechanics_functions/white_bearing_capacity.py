@@ -31,8 +31,8 @@ def calc_qNet_dyn_at_vel(qNet_d_guess,  qNet_dyn, depth, relative_density, measu
     using either a specified relative density or a guessed value and then computes the dynamic bearing resistance for the desired velocity.
 
     Parameters
-
     ----------
+
     qNet_d_guess : float
         An initial guess for the dry net bearing resistance. A reasonable range is between 1000 and 10000 kPa.
     qNet_dyn : float
@@ -62,8 +62,8 @@ def calc_qNet_dyn_at_vel(qNet_d_guess,  qNet_dyn, depth, relative_density, measu
         If False, a dry net bearing resistance is calculated using a guessed value. Default is False.
 
     Returns
-
     -------
+    
     float
         Dynamic net bearing resistance (`wanted_qNet_dyn`) at the specified velocity (`wanted_velocity`).
 

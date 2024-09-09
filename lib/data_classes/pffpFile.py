@@ -13,10 +13,45 @@ from operator import itemgetter
 import time
 
 class pffpFile(BinaryFile):
-    # Purpose: To store information and modify a PFFP binary file
+    """
+    Purpose: To store information and modify a PFFP binary file.
 
+    Inherits
+    --------
+
+    BinaryFile
+        A base class for handling binary file operations.
+
+    Attributes
+    ----------
+
+    calibration_params : DataFrame
+        Parameters for converting sensor readings from volts to engineering units.
+    sensor_units : dict, optional
+        Units used for different sensors. Defaults to {"accel": "g", "pressure": "kPa", "Time": "min"}.
+    num_drops : str
+        Number of drops in the file. Defaults to "Not Checked".
+    df_stored : bool
+        Flag indicating whether the DataFrame has been stored.
+    stored_concat_accel : bool
+        Flag indicating whether concatenated acceleration data has been stored.
+    """
+        
     # TODO: Add a time zone category and add that data to the datetime
     def __init__(self, file_dir, calibration_params, sensor_units = {"accel":"g", "pressure":"kPa", "Time":"min"}):
+        """
+        Initialize the pffpFile instance.
+
+        Parameters
+        ----------
+
+        file_dir : str
+            The directory of the binary file.
+        calibration_params : DataFrame
+            Calibration parameters for converting sensor readings.
+        sensor_units : dict, optional
+            Units used for different sensors. Defaults to {"accel": "g", "pressure": "kPa", "Time": "min"}.
+        """
         BinaryFile.__init__(self, file_dir)
 
         # Store the calibration params fro converting from volts to engineering units
@@ -36,33 +71,42 @@ class pffpFile(BinaryFile):
         self.sensor_units = sensor_units
 
     def __str__(self):
-        # Purpose: Return some information about the file
+        """
+        Return a string representation of the pffpFile instance.
+
+        Returns
+        -------
+
+        str
+            A formatted string with information about the file, number of drops, and other attributes.
+        """
         return f"File Directory: {self.file_dir} \nNum Drops in file: {self.num_drops} \
-        \nDrop Date: {self.datetime.date()} \nDrop Time: {self.datetime.time()} \
-        \ndf stored: {self.df_stored}\
-        \nConcat accel stored: {self.stored_concat_accel}"
-
-    @staticmethod
-    def convert_acceleration_unit(df, columns, input_unit, output_unit):
-        # Purpose: Convert the acceleration unit from one  to another
-        # TODO: Generalize this so that it follows the same format as the other converters
-        # NOTE: Could potentiallly make a general function that just understands units
-
-        if input_unit  != "g":
-            raise IndexError("Conversions starting from units other than g's not implemented")
-        
-        # Assumes convertion from g's
-        acceleration_conversion_dict = {
-                                        "m/s^2": 9.80665,
-                                        "g": 1
-        }
-
-        df[columns] = df[columns] * acceleration_conversion_dict[output_unit]
-
-        return df
+                \nDrop Date: {self.datetime.date()} \nDrop Time: {self.datetime.time()} \
+                \ndf stored: {self.df_stored}\
+                \nConcat accel stored: {self.stored_concat_accel}"
         
     @staticmethod
     def get_tightest_sensor(row, resolutions, labels):
+        """
+        Determine the sensor with the closest resolution to the maximum value in the row.
+
+        Parameters
+        ----------
+
+        row : Series
+            The data row containing sensor values.
+        resolutions : list of float
+            List of possible sensor resolutions.
+        labels : list of str
+            List of sensor labels corresponding to the resolutions.
+
+        Returns
+        -------
+
+        float
+            The value from the row that corresponds to the closest resolution.
+        """
+         
         value = row.max()
 
         # Filter out resolutions smaller than the value
@@ -84,7 +128,25 @@ class pffpFile(BinaryFile):
     
     def new_pffp_file_name(self, survey_id, num_char_from_end = 8, use_default = True, other_name = None):
         """
-        Purpose: Update the name of a pffp file
+        Update the name of the pffp file.
+
+        Parameters
+        ----------
+
+        survey_id : str
+            The survey identifier to include in the new file name.
+        num_char_from_end : int, optional
+            Number of characters to keep from the end of the current file name. Defaults to 8.
+        use_default : bool, optional
+            Whether to use the default naming format. Defaults to True.
+        other_name : str, optional
+            A custom name to use instead of the default format. Not implemented yet.
+
+        Raises
+        ------
+
+        ValueError
+            If `use_default` is False and `other_name` is None.
         """
 
         # TODO: Need to make sure this works
@@ -107,7 +169,32 @@ class pffpFile(BinaryFile):
             drop.containing_file = self.file_name
 
     def binary_2_sensor_df(self, size_byte = 3, byte_order = "big", signed = True, acceleration_unit = "g", pressure_unit = "kPa", time_unit = "min"):
-        # Purpose read a binary file and transform it to a processed df
+        """
+        Read a binary file and transform it into a Dataframe that has the sensor values converted to engineering units of interest.
+
+        Parameters
+        ----------
+
+        size_byte : int, optional
+            The size of each data element in bytes. Defaults to 3.
+        byte_order : str, optional
+            The byte order of the binary file. Defaults to "big".
+        signed : bool, optional
+            Whether the data is signed. Defaults to True.
+        acceleration_unit : str, optional
+            The unit to convert acceleration values to. Defaults to "g".
+        pressure_unit : str, optional
+            The unit to convert pressure values to. Defaults to "kPa".
+        time_unit : str, optional
+            The unit for time values. Defaults to "min".
+
+        Returns
+        -------
+
+        DataFrame
+            The processed DataFrame with converted sensor readings and time steps.
+        """
+
         column_names = ["Count", 'Unknown', "2g_accel", "18g_accel", "50g_accel", "pore_pressure", "200g_accel", 
                                                                 "55g_x_tilt","55g_y_tilt", "250g_accel"]
         num_columns = len(column_names)
@@ -152,8 +239,7 @@ class pffpFile(BinaryFile):
 
         # Acceleration scaling
         acceleration_sensor_names = ["2g_accel", "18g_accel", "50g_accel","200g_accel", "55g_x_tilt","55g_y_tilt", "250g_accel"]
-        
-        df = pffpFile.convert_acceleration_unit(df, acceleration_sensor_names, "g", acceleration_unit)
+        df[acceleration_sensor_names] = convert_accel_units(df[acceleration_sensor_names], "g", acceleration_unit)
         
         # Dictionary with conversion from psi to other sets of units
         pressure_conversion_dict = {
@@ -172,9 +258,34 @@ class pffpFile(BinaryFile):
     # TODO: Need to modularize this function. This thing is too big
     def analyze_file(self, use_pore_pressure = True, store_df = True, overide_water_drop = False, 
                      select_accel = ["2g_accel", "18g_accel", "50g_accel", "250g_accel"]):
-        # Purpose: Analyzes a bin file, gets
-        # number of drops in the file
-        # peak location of the drops
+        """
+        Analyze the binary file to identify and process drops based on sensor data.
+
+        Parameters
+        ----------
+
+        use_pore_pressure : bool, optional
+            Whether to use pore pressure data to help identify drops. Defaults to True.
+        store_df : bool, optional
+            Whether to store the DataFrame in the class attribute for later use. Defaults to True.
+        overide_water_drop : bool, optional
+            Flag to override the default water drop detection. Defaults to False.
+        select_accel : list of str, optional
+            List of accelerometer labels to use for drop analysis. Defaults to ["2g_accel", "18g_accel", "50g_accel", "250g_accel"].
+
+        Notes
+        -----
+
+        This method performs the following actions:
+        - Loads and processes the binary file into a DataFrame.
+        - Stitches accelerometer data together, excluding certain sensors if needed.
+        - Identifies drop locations based on peak accelerations and optionally pore pressure data.
+        - Creates `Drop` objects for each identified drop and stores them in the `drops` attribute.
+        - Optionally stores the DataFrame if `store_df` is True.
+        
+        TODO:
+        - Add inputs for drop detection tolerances and sampling rate.
+        """
         
         # Set the flag that keeps track if the df is stored
 
@@ -287,8 +398,23 @@ class pffpFile(BinaryFile):
             self.df_stored = True
     
     def process_drops(self):
-        # Purpose: Analyze the drops in the files
+        """
+        Process the identified drops in the file by integrating acceleration data.
 
+        Notes
+        -----
+
+        This method processes each drop by:
+        - Trimming the acceleration data around the drop events.
+        - Integrating the trimmed acceleration data to obtain meaningful metrics.
+        - Handling any errors that occur during processing, including moving files to a "funky" folder if errors are encountered.
+
+        Raises
+        ------
+
+        zeroLenError
+            If any error occurs during the processing of drops.
+        """
         # Check if the df is stored
         if self.df_stored:
             # Temporarily store the df
@@ -339,8 +465,16 @@ class pffpFile(BinaryFile):
 
     def manually_process_drops(self, interactive_plot = True, figsize = [6,4]):
         """
-        Purpose: Wrapper for the manual indices selection and the manual integration 
-                 Allows manual drops in this file to be processed
+        Manually process drops by allowing the user to select drop indices and perform integration interactively.
+
+        Parameters
+        ----------
+
+        interactive_plot : bool, optional
+            Whether to use interactive plotting for manual index selection. Defaults to True.
+        figsize : list of int, optional
+            The size of the figures for interactive plots. Defaults to [6, 4].
+
         """
         # Loop over the drops in the file
         for drop in self.drops: 
@@ -353,8 +487,29 @@ class pffpFile(BinaryFile):
                 self.manually_integrate_drop(drop)
 
     def manually_integrate_drop(self, drop):
-        # Purpose: Setup and integrate the drops that were manually processed
+        """
+        Integrate acceleration data for a drop that was manually processed.
 
+        Parameters
+        ----------
+
+        drop : Drop
+            The `Drop` object representing the manually processed drop.
+
+        Notes
+        -----
+
+        This method performs the integration of acceleration data for a drop whose indices were selected manually.
+        It assumes that the indices have been found and the drop has been marked as manually processed.
+
+        Raises
+        ------
+
+        IndexError
+            If the indices for the drop are not found.
+        ValueError
+            If the drop is not marked as manually processed.
+        """
         # Check if the df is stored
         if self.df_stored:
             # Temporarily store the df
@@ -381,15 +536,39 @@ class pffpFile(BinaryFile):
         drop.processed = True 
         
     def check_drop_in_file(self):
-        # Purpose: check if there's a drop in the file
+        """
+        Check if there are any drops detected in the file.
+
+        Returns
+        -------
+
+        bool
+            True if there are drops detected, False otherwise.
+        """
         if self.num_drops > 0:
             return True
         else:
             return False
 
     def check_pore_pressure_4_drop(self, df, window = 2500):
-        # Purpose: use pore pressure to check if there's a drop in the file
-        
+        """
+        Use pore pressure data to check if there are drops in the file.
+
+        Parameters
+        ----------
+
+        df : DataFrame
+            DataFrame containing sensor data with columns 'Time' and 'pore_pressure'.
+        window : int, optional
+            Window size for smoothing the pressure data (default is 2500).
+
+        Returns
+        -------
+
+        tuple
+            - numpy.ndarray: Array of times where pressure gradient peaks occur.
+            - int: Number of drops detected based on pressure derivative.
+        """
         # Store the df in a temp variable
         time = np.array(df["Time"])
         pressure = np.array(df["pore_pressure"])
@@ -415,7 +594,22 @@ class pffpFile(BinaryFile):
         return time_peak_pressure_deriv, num_drops
     
     def stitch_accelerometers(self, accel_df, accel_labels):
-        # Purpose: Stich acclerometers together to get the most resolved accelerations
+        """
+        Stitch accelerometer data together to get the most resolved accelerations.
+
+        Parameters
+        ----------
+
+        accel_df : DataFrame
+            DataFrame containing accelerometer data.
+        accel_labels : list of str
+            List of accelerometer labels to be used for stitching.
+
+        Notes
+        -----
+
+        Assumes that the accel labels and the max sensor values are in the same order.
+        """        
         res_dict = {"2g_accel":1.7, "18g_accel": 18, "50g_accel":50, "200g_accel":200, "250g_accel":250}
         
         resolutions = itemgetter(*accel_labels)(res_dict)
@@ -427,7 +621,30 @@ class pffpFile(BinaryFile):
         self.stored_concat_accel = True
     
     def manual_indices_selection(self, drop, debug = False, interactive = True, figsize = [12,8], legend = False, lag = 0.1):
-        # Purpose: Manually select indices for drops
+        """
+        Manually select indices for drops. Allows users to enter time or index values.
+
+        Parameters
+        ----------
+
+        drop : Drop
+            The `Drop` object for which indices are to be manually selected.
+        debug : bool, optional
+            Flag to enable debugging information (default is False).
+        interactive : bool, optional
+            Flag to enable interactive plotting (default is True).
+        figsize : list of int, optional
+            Figure size for plotting (default is [12, 8]).
+        legend : bool, optional
+            Flag to show legend on the plot (default is False).
+        lag : float, optional
+            Time delay before accepting user input (default is 0.1 seconds).
+
+        Notes
+        -----
+
+        Prompts the user to specify time, index, or skip the drop. Provides options for impulse integration and updates the drop object accordingly.
+        """
         
         # TODO: Add an option so in case the detected drop isn't a real drop, but there are other real drops in the file
         
@@ -557,8 +774,24 @@ class pffpFile(BinaryFile):
 
     # Plotting functions
     def quick_view(self, interactive = False, figsize = [12, 8], legend = False):
-        # Purpose: Get a quick view of the file
+        """
+        Provide a quick view of the file data by plotting accelerometer, pore pressure, and tilt sensor data.
 
+        Parameters
+        ----------
+
+        interactive : bool, optional
+            Flag to enable interactive plotting with Plotly (default is False).
+        figsize : list of int, optional
+            Figure size for plotting (default is [12, 8]).
+        legend : bool, optional
+            Flag to show legend on the plot (default is False).
+
+        Notes
+        -----
+        
+        If `interactive` is True, plots are created using Plotly for interactive viewing. Otherwise, matplotlib is used for static plots.
+        """
         # if the df isn't stored load it for plotting don't store it though
         if not self.df_stored:
             df = self.binary_2_sensor_df(acceleration_unit="g", pressure_unit= "kPa")
@@ -655,7 +888,36 @@ class pffpFile(BinaryFile):
                             colors = ["black", "blue", "green", "orange", "purple", "brown"],
                             units = {"Time":"s", "accel":"g", "velocity":"m/s", "displacement":"cm"},
                             line_style = ["solid", "dashed"]):        
-        # Purpose: Plot the standard velocity and acceleration vs. displacement plots for all the drops
+        """
+        Plot the standard velocity and acceleration versus displacement plots for all processed drops.
+
+        Parameters
+        ----------
+
+        figsize : list of int, optional
+            Size of the figure in inches (default is [4, 6]).
+        save_figs : bool, optional
+            Flag to save the figures (default is False).
+        hold : bool, optional
+            Flag to hold the figure open and plot on the same figure (default is False). If True, all drops will be plotted on the same figure.
+        legend : bool, optional
+            Flag to show the legend on the plot (default is True).
+        colors : list of str, optional
+            List of colors to use for plotting each drop (default is ["black", "blue", "green", "orange", "purple", "brown"]).
+        units : dict, optional
+            Dictionary specifying the units for time, acceleration, velocity, and displacement (default is {"Time": "s", "accel": "g", "velocity": "m/s", "displacement": "cm"}).
+        line_style : list of str, optional
+            List of line styles to use for plotting (default is ["solid", "dashed"]).
+
+        Notes
+        -----
+
+        - If `hold` is True, all processed drops will be plotted on the same figure using the first color specified in the `colors` list.
+        - Each processed drop will be plotted with acceleration and velocity versus displacement.
+        - The `units` dictionary is used to convert the units of the data to match the specified units.
+        - The `save_figs` flag is not implemented in this version of the method.
+        - If `legend` is True, a legend will be added to the plot to differentiate between acceleration and velocity.
+        """
         # TODO: Move this to the drop level and call the drop function here
         # Set all of the line colors to black if hold is on
         if not hold:
