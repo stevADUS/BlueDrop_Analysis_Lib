@@ -189,4 +189,3 @@ dependencies:
   - zipp=3.20.1=pyhd8ed1ab_0
   - zlib=1.3.1=h4ab18f5_1
   - zstd=1.5.6=ha6fb4c9_0
-prefix: /home/jmoore/Miniconda3/envs/PFFP_Analysis
