@@ -1,4 +1,4 @@
-name: PFFP_Analysis
+name: PFFP_Analysis_2
 channels:
   - conda-forge
   - defaults
