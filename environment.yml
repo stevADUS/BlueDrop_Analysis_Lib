@@ -9,8 +9,6 @@ dependencies:
   - plotly
   - scipy
   - joblib
-  - time
   - ipykernel
   - openpyxl
   - nbformat
-prefix: /home/jmoore/Miniconda3/envs/PFFP_Analysis
