@@ -9,6 +9,7 @@ class File:
 
     Attributes
     ----------
+    
     file_dir : str
         The directory of the file.
     file_name : str
@@ -18,6 +19,7 @@ class File:
 
     Methods
     -------
+
     __init__(file_dir)
         Initialize a File object with the provided file directory.
     get_file_datetime()
@@ -26,6 +28,7 @@ class File:
         Extract and store the file name from the directory path.
     new_file_name(new_name)
         Update the file name and rename the physical file on the file system.
+        
     """
     def __init__(self, file_dir):
         """
@@ -46,6 +49,7 @@ class File:
         Get the date and time the file was last modified (assumed to be the drop date).
 
         This method updates the `datetime` attribute with the last modification time of the file.
+        
         """
         modification_time = os.path.getmtime(self.file_dir)  # Get file modification time
         

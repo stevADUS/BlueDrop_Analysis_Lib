@@ -11,14 +11,14 @@ def create_folder_if_not_exists(folder_path):
     Create a folder if it does not already exist.
 
     Parameters
-
     ----------
+    
     folder_path : str
         The path to the folder to be created.
 
     Notes
-
     -----
+
     If the folder already exists, a message is printed indicating so.
     """
     if not os.path.exists(folder_path):
@@ -34,16 +34,16 @@ def apply_mask_to_list(values, mask):
     Apply a mask to a list of values.
 
     Parameters
-
     ----------
+    
     values : list
         The list of values to be masked.
     mask : list of bool
         The mask to apply. Each element of the mask corresponds to an element in `values`.
 
     Returns
-
     -------
+    
     list
         A new list containing only the values where the mask is True.
     """
@@ -54,8 +54,8 @@ def progress_bar(iterations, total, time_left):
     Display a progress bar in the console.
 
     Parameters
-
     ----------
+    
     iterations : int
         The current iteration.
     total : int
@@ -64,8 +64,8 @@ def progress_bar(iterations, total, time_left):
         Estimated time left in seconds.
 
     Notes
-
     -----
+    
     The progress bar shows the completion percentage and the estimated time left in minutes.
     """
     progress = iterations / total
@@ -86,8 +86,8 @@ def convert_time_units(val, input_unit, output_unit):
     Convert a time value from one unit to another.
 
     Parameters
-
     ----------
+    
     val : float
         The time value to be converted.
     input_unit : str
@@ -96,14 +96,14 @@ def convert_time_units(val, input_unit, output_unit):
         The desired output unit. Must be one of "min", "hour", "s".
 
     Returns
-
     -------
+    
     float
         The converted time value.
 
     Notes
-
     -----
+    
     The function first converts the input value to seconds and then to the desired output unit.
     """
     input_to_standard = {
@@ -133,8 +133,8 @@ def convert_accel_units(val, input_unit, output_unit):
     Convert an acceleration value from one unit to another.
 
     Parameters
-
     ----------
+    
     val : float
         The acceleration value to be converted.
     input_unit : str
@@ -143,14 +143,14 @@ def convert_accel_units(val, input_unit, output_unit):
         The desired output unit. Must be one of "g", "m/s^2".
 
     Returns
-
     -------
+    
     float
         The converted acceleration value.
 
     Notes
-
     -----
+    
     The function first converts the input value to meters per second squared and then to the desired output unit.
     """
     input_to_standard ={
@@ -175,8 +175,8 @@ def convert_length_units(val, input_unit, output_unit):
     Convert a length value from one unit to another.
 
     Parameters
-
     ----------
+    
     val : float
         The length value to be converted.
     input_unit : str
@@ -185,15 +185,16 @@ def convert_length_units(val, input_unit, output_unit):
         The desired output unit. Must be one of "cm", "mm", "m".
 
     Returns
-
     -------
+    
     float
         The converted length value.
 
     Notes
-
     -----
+    
     The function first converts the input value to meters and then to the desired output unit.
+    
     """
 
     input_to_standard = {
@@ -221,8 +222,8 @@ def convert_mass_units(val, input_unit, output_unit):
     Convert a mass value from one unit to another.
 
     Parameters
-
     ----------
+    
     val : float
         The mass value to be converted.
     input_unit : str
@@ -231,14 +232,14 @@ def convert_mass_units(val, input_unit, output_unit):
         The desired output unit. Must be one of "g", "lb", "kg".
 
     Returns
-
     -------
+    
     float
         The converted mass value.
 
     Notes
-    
     -----
+    
     The function first converts the input value to kilograms and then to the desired output unit.
     """
 

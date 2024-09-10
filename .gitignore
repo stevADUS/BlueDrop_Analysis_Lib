@@ -16,3 +16,6 @@ foo3
 .vscode
 
 !Mouth_1/*.bin
+/build/
+/build/*
+/build/doctrees/*
