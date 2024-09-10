@@ -7,13 +7,15 @@ import matplotlib.pyplot as plt
 import plotly.graph_objects as go
 import datetime
 
-from lib.data_classes.exceptions import zeroLenError
-from lib.signal_processing.signal_function import moving_average
-from lib.general_functions.helper_functions import convert_accel_units, convert_time_units, convert_mass_units, convert_length_units
-from lib.general_functions.global_constants import GRAVITY_CONST, ALLOWED_TIP_TYPES_LIST
-from lib.mechanics_functions.bearing_capacity_funcs import calc_dyn_bearing_capacity, calc_qs_bearing_capacity
-from lib.pffp_functions.cone_area_funcs import calc_pffp_contact_area
-from lib.general_functions.arrayIO import check_arr_zero_length
+from ..data_classes.exceptions import zeroLenError
+from ..signal_processing.signal_function import moving_average
+from ..general_functions.helper_functions import convert_accel_units, convert_time_units, convert_mass_units, convert_length_units
+from ..general_functions.global_constants import GRAVITY_CONST, ALLOWED_TIP_TYPES_LIST
+from ..mechanics_functions.bearing_capacity_funcs import calc_dyn_bearing_capacity, calc_qs_bearing_capacity
+from ..pffp_functions.cone_area_funcs import calc_pffp_contact_area
+# Trying the relative path
+from ..general_functions.arrayIO import check_arr_zero_length
+# from lib.general_functions.arrayIO import check_arr_zero_length
 
 # TODO: In the future add a bearing capacity class to store all of the information about a bearing capacity calculation
 # TODO: make a pffp class that store all of the information about the pffp
