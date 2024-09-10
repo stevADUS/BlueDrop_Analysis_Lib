@@ -31,7 +31,7 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
           auto-update-conda: true
-          activate-environment: test-env
+          activate-environment: PFFP_Analysis
           environment-file: environment_linux.yml
           use-mamba: true  # Optional, speeds up package installation
 
@@ -39,9 +39,9 @@ jobs:
         run: conda info
 
       - name: Install Dependencies
-        run: conda env update --file environment.yml
+        run: conda env update --file environment_linux.yml
 
       - name: Run tests with pytest
         run: |
-          conda activate test-env
+          conda activate PFFP_Analysis
           pytest
