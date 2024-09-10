@@ -41,9 +41,6 @@ jobs:
       - name: Install Dependencies
         run: conda env update --file environment_linux.yml
 
-      - name: Set PYTHONPATH
-        run: echo "PYTHONPATH=$(pwd)/lib" >> $GITHUB_ENV
-        
       - name: Initialize Conda
         # Ensure conda is initialized in the shell
         run: conda init bash
