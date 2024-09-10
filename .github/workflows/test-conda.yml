@@ -43,5 +43,6 @@ jobs:
 
       - name: Run tests with pytest
         run: |
+          conda init
           conda activate PFFP_Analysis
           pytest
