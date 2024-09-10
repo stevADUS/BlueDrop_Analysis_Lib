@@ -19,3 +19,9 @@ foo3
 /build/
 /build/*
 /build/doctrees/*
+
+# Don't track interactive notebooks. They get big too quick
+*.ipynb
+
+# Do track the ones in the example folder
+!/Examples/*.ipynb
