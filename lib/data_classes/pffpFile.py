@@ -658,11 +658,49 @@ class pffpFile(BinaryFile):
         time.sleep(lag)                            
 
         allowed_input_type = ["Time", "index", "skip"]
+        allowed_overwrite_inputs = ["y", "n"]
+
         index_dict = drop.drop_indices.copy()      
         
         for key, value in index_dict.items():
+            # If there is an index stored
             if not value is None:
-                continue
+                index_time = self.df["Time"][value]
+
+                print("Index label: {}".format(key),
+                      "\nCurrent Index value: {}".format(value),
+                      "\nCurrent Time value: {}\n".format(index_time)
+                      )
+
+
+                # Make a string for overwriting
+                overwrite_str = ("Would you like to overwrite the index?"
+                                "\nEnter {} (for yes) or {} (for no).".format(allowed_overwrite_inputs[0],
+                                                                                                          allowed_overwrite_inputs[1])
+                                )
+
+                # Take in the input
+                overwrite_input = input(overwrite_str)
+
+                # Check if it's the enter character. If it is escape from this analysis
+                if overwrite_input == "":
+                    print("Escaping from overwriting without completion")
+
+                # Check that the 
+                while not overwrite_input.lower() in allowed_overwrite_inputs:
+                    print("{} is not an allowed input. Only {} or {} allowed".format(allowed_overwrite_inputs[0],
+                                                                                     allowed_overwrite_inputs[1])
+                         )
+                    
+                    # Read the input again
+                    overwrite_input = input(overwrite_str)
+                
+                # If no need to overwrite skip the rest of the for loop
+                if overwrite_input == "n":
+                    print("Continuing to the next index...")
+                    continue
+
+            # Otherwise just continue
         
             print("--------- Need {} ---------".format(key))
             # Get the type of the input allow users to enter a time or a index
@@ -834,7 +872,7 @@ class pffpFile(BinaryFile):
                 )
 
             # Update xaxis properties
-            fig.update_xaxes(title_text="Time {time_unit}", row=3, col=1)
+            fig.update_xaxes(title_text=f"Time {time_unit}", row=3, col=1)
 
             # Update yaxis properties
             fig.update_yaxes(title_text="Acceleration (g)", row=1, col=1)

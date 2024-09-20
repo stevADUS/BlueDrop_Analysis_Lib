@@ -204,8 +204,8 @@ def find_qNet_dry(qNet_d_guess, qNet_dyn, relative_density, V, V_50 = 1, Q = 10,
     Solve for the net drained bearing resistance (`qNet_dry`) using an iterative solver.
 
     Parameters
-
     ----------
+    
     qNet_d_guess : float
         Initial guess for the net drained bearing resistance (`qNet_dry`), typically in kPa.
     qNet_dyn : float
@@ -224,14 +224,14 @@ def find_qNet_dry(qNet_d_guess, qNet_dyn, relative_density, V, V_50 = 1, Q = 10,
         Cone factor used to relate the undrained shear strength to the net bearing resistance. Default is 12.
 
     Returns
-
     -------
+    
     float
         Difference between the calculated dynamic bearing capacity and the measured dynamic bearing resistance (`qNet_dyn`).
 
     Notes
-
     -----
+    
     This function is typically used with a solver to find the value of `qNet_dry` that results in the calculated dynamic bearing capacity matching the measured dynamic bearing resistance.
 
     """

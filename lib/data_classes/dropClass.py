@@ -1090,6 +1090,7 @@ class Drop:
         - For interactive plots, the method uses Plotly's `make_subplots` to create a multi-row subplot for acceleration, velocity, and displacement.
         - For static plots, the method uses Matplotlib to generate a three-row subplot.
         - The figure's title includes the file drop index from `self.file_drop_index`.
+        
         """
  
         # Temp df storage
@@ -1323,6 +1324,7 @@ class Drop:
     # Outputting functions
     def output_impulse_data(self, folder_dir = "", file_name = None, index = False):
         """
+        
         Output impulse data to a CSV file.
 
         This method exports the impulse data to a CSV file. The file is named based on the drop index and containing file, unless a custom file 
@@ -1348,9 +1350,9 @@ class Drop:
         Notes
         -----
 
-        - The file name is constructed using the `folder_dir`, `self.file_drop_index`, and the base name of `self.containing_file` 
-        (with the ".bin" extension removed).
+        - The file name is constructed using the `folder_dir`, `self.file_drop_index`, and the base name of `self.containing_file` (with the ".bin" extension removed).
         - The method uses Pandas' `to_csv` function to write the DataFrame to a CSV file.
+
         """
 
         # If no file name was inputted
