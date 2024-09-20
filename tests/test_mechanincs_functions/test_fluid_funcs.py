@@ -25,7 +25,16 @@ def test_calc_drag_force():
     assert result == expected_drag_force, f"Expected {expected_drag_force}, got {result}"
 
 def test_calc_buoyant_force():
-    pass
+    # Given values
+    rho_fluid = 1.0
+    displaced_volume = 2.0
+
+    g = 10.0
+
+    expected_buoyancy_force = 20.0
+
+    result = calc_buoyant_force(rho_fluid, displaced_volume, g)
+    assert result == expected_buoyancy_force, f"Expected {expected_buoyancy_force}, got {result}"
 
 def test_calc_corrected_water_depth():
     pass
