@@ -220,7 +220,7 @@ def calc_dyn_bearing_capacity(pffp_accel, pffp_velocity, pffp_mass, pffp_frontal
 
     elif not water_drop:
         # Otherwise do the calc using the air drop formula
-        qDyn = calc_air_drop_dyn_bearing(pffp_accel, pffp_velocity, pffp_mass=pffp_mass, pffp_frontal_area=pffp_frontal_area,
+        qDyn = calc_air_drop_dyn_bearing(pffp_accel, pffp_velocity, pffp_mass=pffp_mass, pffp_frontal_area = pffp_frontal_area,
                                          soil_contact_area=soil_contact_area, 
                                          drag_coeff = drag_coeff, gravity=gravity, rho_air = rho_air)
 
