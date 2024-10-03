@@ -232,7 +232,10 @@ class Drop:
         """
         Identify the release point of the drop from acceleration data.
 
-        This method determines the release point of the drop by first flipping the acceleration data to find peaks where the acceleration approaches free fall. It then finds the closest peak to the drop's main peak and locates the index in the original acceleration data where the acceleration is within the specified bounds.
+        This method determines the release point of the drop by first flipping the acceleration data to 
+        find peaks where the acceleration approaches free fall. It then finds the closest peak to the 
+        drop's main peak and locates the index in the original acceleration data where the acceleration 
+        is within the specified bounds.
 
         Parameters
         ----------
@@ -270,7 +273,8 @@ class Drop:
         Example
         -------
 
-        Given an array of acceleration values and the parameters, this method returns the index of the release point:
+        Given an array of acceleration values and the parameters, this method returns the index of the 
+        release point:
 
         >>> accel = np.array([0.5, 0.6, 1.2, 1.1, 0.9, 1.0, 1.3])
         >>> drop.find_release(accel)
@@ -831,7 +835,9 @@ class Drop:
         """
         Calculate the dynamic bearing capacity (qsbc) for the drop and store it in the selected bearing DataFrame.
 
-        This method computes the dynamic bearing capacity based on various parameters related to the drop and the environment. The result is stored in the appropriate DataFrame within `bearing_dfs`, identified by a unique column name.
+        This method computes the dynamic bearing capacity based on various parameters related to the drop 
+        and the environment. The result is stored in the appropriate DataFrame within `bearing_dfs`, 
+        identified by a unique column name.
 
         Parameters
         ----------

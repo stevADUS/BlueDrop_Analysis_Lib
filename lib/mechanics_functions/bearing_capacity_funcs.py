@@ -161,7 +161,8 @@ def calc_water_drop_dyn_bearing(pffp_accel, pffp_velocity, pffp_mass, pffp_front
 
     return qDyn
 
-def calc_dyn_bearing_capacity(pffp_accel, pffp_velocity, pffp_mass, pffp_frontal_area, soil_contact_area, pffp_volume, water_drop, drag_coeff = 1.0, 
+def calc_dyn_bearing_capacity(pffp_accel, pffp_velocity, pffp_mass, pffp_frontal_area, soil_contact_area,
+                              pffp_volume, water_drop, drag_coeff = 1.0, 
                               gravity = GRAVITY_CONST, rho_water = 1020, rho_air = 1.293):
     """
     Calculate the dynamic bearing capacity of the soil for both water and air drops.
@@ -219,7 +220,8 @@ def calc_dyn_bearing_capacity(pffp_accel, pffp_velocity, pffp_mass, pffp_frontal
 
     elif not water_drop:
         # Otherwise do the calc using the air drop formula
-        qDyn = calc_air_drop_dyn_bearing(pffp_accel=pffp_accel, pffp_mass=pffp_mass, soil_contact_area=soil_contact_area, 
+        qDyn = calc_air_drop_dyn_bearing(pffp_accel, pffp_velocity, pffp_mass=pffp_mass, pffp_frontal_area=pffp_frontal_area,
+                                         soil_contact_area=soil_contact_area, 
                                          drag_coeff = drag_coeff, gravity=gravity, rho_air = rho_air)
 
     return qDyn

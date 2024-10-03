@@ -217,7 +217,7 @@ class pffpDataFolder(Folder):
         ----------
 
         subfolder_dir : str, optional
-            The subfolder within the main folder where files with drops should be stored.
+            The subfolder within the main folder where files without drops should be stored.
         use_pore_pressure : bool, optional
             Whether to use pore pressure data in the analysis.
         store_df : bool, optional
