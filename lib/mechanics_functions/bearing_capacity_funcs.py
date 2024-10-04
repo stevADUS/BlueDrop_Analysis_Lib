@@ -76,7 +76,7 @@ def calc_air_drop_dyn_bearing(pffp_accel, pffp_velocity, pffp_mass, pffp_frontal
     force_bearing = pffp_mass * pffp_accel + force_gravity - force_drag
 
     # Calc the dyn
-    qDyn = force_bearing/soil_contact_area
+    qDyn = np.array(force_bearing)/soil_contact_area
 
     return  qDyn
 
@@ -222,7 +222,7 @@ def calc_dyn_bearing_capacity(pffp_accel, pffp_velocity, pffp_mass, pffp_frontal
         # Otherwise do the calc using the air drop formula
         qDyn = calc_air_drop_dyn_bearing(pffp_accel, pffp_velocity, pffp_mass=pffp_mass, pffp_frontal_area = pffp_frontal_area,
                                          soil_contact_area=soil_contact_area, 
-                                         drag_coeff = drag_coeff, gravity=gravity, rho_air = rho_air)
+                                         drag_coeff = drag_coeff, gravity=gravity, rho_air=rho_air)
 
     return qDyn
 
