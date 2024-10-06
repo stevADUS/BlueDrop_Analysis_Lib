@@ -465,7 +465,8 @@ class pffpFile(BinaryFile):
 
     def manually_process_drops(self, interactive_plot = True, figsize = [6,4]):
         """
-        Manually process drops by allowing the user to select drop indices and perform integration interactively.
+        Manually process drops by allowing the user to select drop indices and perform integration 
+        interactively.
 
         Parameters
         ----------

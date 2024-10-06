@@ -737,13 +737,16 @@ class Drop:
         """
         Integrate acceleration data for the impulse phase.
 
-        This method performs integration on the acceleration data specifically for the impulse phase of the drop. It updates the `impulse_df` DataFrame with computed velocity and displacement values. The method accounts for initial velocity and gravitational effects.
+        This method performs integration on the acceleration data specifically for the impulse phase of 
+        the drop. It updates the `impulse_df` DataFrame with computed velocity and displacement values. 
+        The method accounts for initial velocity and gravitational effects.
 
         Parameters
         ----------
 
         init_velocity : float, optional
-            The initial velocity to use for integration. Default is 0.0. If `self.impulse_integration` is `True`, the release DataFrame is not used to calculate the initial velocity.
+            The initial velocity to use for integration. Default is 0.0. If `self.impulse_integration` 
+            is `True`, the release DataFrame is not used to calculate the initial velocity.
 
         Notes
         -----
@@ -780,9 +783,12 @@ class Drop:
     def calc_drop_qs_bearing(self, area_type, strain_rate_correc_type = "log", k_factor = 0.1, ref_velocity = 0.02, bearing_name = None, 
                              use_k_name = True, other_name = ""):
         """
-        Calculate the quasi-static bearing capacity (qsbc) for the drop and store it in the selected bearing DataFrame.
+        Calculate the quasi-static bearing capacity (qsbc) for the drop and store it in the selected 
+        bearing DataFrame.
 
-        This method computes the quasi-static bearing capacity using a given k-factor or a user-defined name. The result is stored in the appropriate DataFrame within `bearing_dfs` with a unique column name. The function supports strain rate correction and allows customization of the column name.
+        This method computes the quasi-static bearing capacity using a given k-factor or a user-defined 
+        name. The result is stored in the appropriate DataFrame within `bearing_dfs` with a unique column 
+        name. The function supports strain rate correction and allows customization of the column name.
 
         Parameters
         ----------
@@ -807,7 +813,8 @@ class Drop:
 
         - The quasi-static bearing capacity is calculated using the `calc_qs_bearing_capacity` function.
         - The `bearing_dfs` dictionary should be properly initialized with DataFrames for different `area_type` values.
-        - Ensure that `impulse_df` contains velocity data and `bearing_dfs` has the necessary dynamic bearing data for the specified `area_type`.
+        - Ensure that `impulse_df` contains velocity data and `bearing_dfs` has the necessary dynamic 
+        bearing data for the specified `area_type`.
         """
 
         velocity = self.impulse_df["velocity"]
