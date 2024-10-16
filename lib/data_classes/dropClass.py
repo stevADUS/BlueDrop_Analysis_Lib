@@ -487,7 +487,10 @@ class Drop:
         """
         Store and process sensor data for the selected drop region.
 
-        This method updates the units of acceleration and time, converts time units to seconds, and extracts relevant segments of acceleration data for the selected drop. It also calculates and stores indices for the release, start, and end of the impulse. If the release point cannot be found, it raises an error.
+        This method updates the units of acceleration and time, converts time units to seconds, 
+        and extracts relevant segments of acceleration data for the selected drop. It also calculates 
+        and stores indices for the release, start, and end of the impulse. If the release point cannot 
+        be found, it raises an error.
 
         Parameters
         ----------
@@ -511,7 +514,8 @@ class Drop:
             4. Attempts to find the release index; raises an error if not found.
             5. Stores the indices and calculated data for further processing.
         - The time units are converted to seconds regardless of the input unit.
-        - If the release index cannot be found due to proximity to the start of the file, an error is caught and re-raised after processing the available indices.
+        - If the release index cannot be found due to proximity to the start of the file, 
+        an error is caught and re-raised after processing the available indices.
 
         Raises
         ------
@@ -522,7 +526,8 @@ class Drop:
         Example
         -------
 
-        Given acceleration and time data, this method processes and stores the data for the selected drop region:
+        Given acceleration and time data, this method processes and stores the data for the 
+        selected drop region:
 
         >>> accel = np.array([0.1, 0.2, 9.8, 9.7, 9.6])
         >>> time = np.array([0, 1, 2, 3, 4])
@@ -584,7 +589,9 @@ class Drop:
         """
         Create and store a DataFrame for the impulse segment of the drop.
 
-        This method extracts the segment of acceleration and time data corresponding to the impulse of the drop, based on the previously determined indices. It then creates a DataFrame with this data and stores it as an instance attribute.
+        This method extracts the segment of acceleration and time data corresponding to the 
+        impulse of the drop, based on the previously determined indices. It then creates a 
+        DataFrame with this data and stores it as an instance attribute.
 
         Parameters
         ----------
@@ -597,7 +604,8 @@ class Drop:
         Notes
         -----
 
-        - The impulse segment is defined between the indices of the start and end of the impulse, which are stored in `self.drop_indices`.
+        - The impulse segment is defined between the indices of the start and end of the impulse, 
+        which are stored in `self.drop_indices`.
         - The resulting DataFrame, `self.impulse_df`, contains two columns:
             - "Time": Time values for the impulse segment.
             - "accel": Acceleration values for the impulse segment.
@@ -650,15 +658,21 @@ class Drop:
         """
         Integrate acceleration data for the drop, from the release point to the end of the impulse.
 
-        This method performs integration on the acceleration data to compute velocity and displacement from the release point to the end of the impulse. It also handles the case where only impulse integration is required.
+        This method performs integration on the acceleration data to compute velocity and displacement 
+        from the release point to the end of the impulse. It also handles the case where only impulse 
+        integration is required.
 
-        The method updates the `impulse_df` DataFrame with the calculated velocity and displacement, adjusts units, and marks the drop as processed.
+        The method updates the `impulse_df` DataFrame with the calculated velocity and displacement, 
+        adjusts units, and marks the drop as processed.
 
         Notes
         -----
 
-        - If `self.only_impulse` is `True`, only the impulse integration is performed using the `impulse_integration()` method.
-        - If `self.only_impulse` is `False`, the method first performs release integration using the `release_integration()` method. It then extracts and adjusts the impulse data from the `release_df` DataFrame:
+        - If `self.only_impulse` is `True`, only the impulse integration is performed using the 
+        `impulse_integration()` method.
+        - If `self.only_impulse` is `False`, the method first performs release integration using the 
+        `release_integration()` method. It then extracts and adjusts the impulse data from the 
+        `release_df` DataFrame:
             - Velocity values are flipped in sign.
             - Displacement values are flipped in sign and adjusted to start at zero.
         - The units for acceleration, velocity, and displacement are updated to "m/s^2", "m/s", and "m", respectively.
@@ -708,8 +722,10 @@ class Drop:
         Notes
         -----
 
-        - The acceleration data is adjusted by subtracting the gravitational constant (`GRAVITY_CONST`) to account for gravity.
-        - Velocity and displacement are calculated using the cumulative trapezoid rule applied to the acceleration and velocity data, respectively.
+        - The acceleration data is adjusted by subtracting the gravitational constant (`GRAVITY_CONST`) 
+        to account for gravity.
+        - Velocity and displacement are calculated using the cumulative trapezoid rule applied to 
+        the acceleration and velocity data, respectively.
         - Ensure that `self.release_df` contains valid data before calling this method.
         """
 
@@ -751,10 +767,14 @@ class Drop:
         Notes
         -----
 
-        - The acceleration data is adjusted by subtracting the gravitational constant (`GRAVITY_CONST`) to account for gravity.
-        - The velocity is computed by cumulative integration of the adjusted acceleration and then inverted because the probe is decelerating. The maximum value of the computed velocity is subtracted from the velocity to reflect the impact velocity at the beginning.
+        - The acceleration data is adjusted by subtracting the gravitational constant (`GRAVITY_CONST`) 
+        to account for gravity.
+        - The velocity is computed by cumulative integration of the adjusted acceleration and then 
+        inverted because the probe is decelerating. The maximum value of the computed velocity is 
+        subtracted from the velocity to reflect the impact velocity at the beginning.
         - Displacement is computed by integrating the velocity data.
-        - The method assumes that the `impulse_df` DataFrame already contains the relevant data for the impulse phase.
+        - The method assumes that the `impulse_df` DataFrame already contains the relevant data for 
+        the impulse phase.
         """
 
         # Temp storage for the df

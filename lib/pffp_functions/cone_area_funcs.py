@@ -74,21 +74,31 @@ def calcFFPConeContactArea(penetrationDepth, tipHeight, baseRadius, coneTipRadiu
     for i, depth in enumerate(penetrationDepth):
         
         # if the depth is greater than the tipHeight of the cone
-        if depth > tipHeight:
+        if depth >= tipHeight:
             # decrease the depth used in the calculation to the tipHeight
             depth = tipHeight
-        
-        # Calc the radius
-        radius = coneTipRadius + depth * coneSideSlope
+            # define radius
+            radius = baseRadius
+            # Check area selection
+            if areaCalcType == "mantle":
+                # if selected calc mantle area (Same as surface area without the base of cone)
+                area[i] = calcConeLateralSurfaceArea(radius, depth)
 
-        # Check area selection
-        if areaCalcType == "mantle":
-            # if selected calc mantle area (Same as surface area without the base of cone)
-            area[i] = calcConeLateralSurfaceArea(radius, depth)
+            elif areaCalcType == "projected":
+                # if selected calc projected area
+                area[i] = calcCircleArea(radius)
 
-        elif areaCalcType == "projected":
-            # if selected calc projected area
-            area[i] = calcCircleArea(radius)
+        elif depth < tipHeight:
+            # Calc the radius
+            radius = coneTipRadius + depth * coneSideSlope
+            # Check area selection
+            if areaCalcType == "mantle":
+                # if selected calc mantle area (Same as surface area without the base of cone)
+                area[i] = calcConeLateralSurfaceArea(radius, depth)
+
+            elif areaCalcType == "projected":
+                # if selected calc projected area
+                area[i] = calcCircleArea(radius)
 
         else: 
             return ValueError("areaCalcType must be mantle or projected. Currently is: {}".format(areaCalcType))
@@ -110,23 +120,34 @@ def calcFFPBluntContactArea(penetrationDepth, tipHeight, baseRadius, areaCalcTyp
 
     for i, depth in enumerate(penetrationDepth):
         # if the depth is greater than the tipHeight of the blunt cylinder
-        if depth > tipHeight:
+        if depth >= tipHeight:
             # decrease the depth used in the calculation to the tipHeight
             depth = tipHeight
         
-        # Check the tipHeight in one line than calc the area in one line instead of looping
-        # radius is constant for cylinder
-        radius = baseRadius
+            # Check the tipHeight in one line than calc the area in one line instead of looping
+            # radius is constant for cylinder
+            radius = baseRadius
+            # Check area selection
+            if areaCalcType == "mantle":
+                # if selected calc mantle area (Surface Area of a cylinder)
+                area[i] = calcCylinderSurfaceArea(radius, depth)
 
-        # Check area selection
-        if areaCalcType == "mantle":
-            # if selected calc mantle area (Surface Area of a cylinder)
-            area[i] = calcCylinderSurfaceArea(radius, depth)
+            elif areaCalcType == "projected":
+                # if selected calc projected area
+                area[i] = calcCircleArea(radius)
 
-        elif areaCalcType == "projected":
-            # if selected calc projected area
-            area[i] = calcCircleArea(radius)
+        elif depth < tipHeight:
+            # radius is constant for cylinder
+            radius = baseRadius
+            # Check area selection
+            if areaCalcType == "mantle":
+                # if selected calc mantle area (Surface Area of a cylinder)
+                area[i] = calcCylinderSurfaceArea(radius, depth)
 
+            elif areaCalcType == "projected":
+                # if selected calc projected area
+                area[i] = calcCircleArea(radius)
+    
         else: 
             return ValueError("areaCalcType must be mantle or projected. Currently is: {}".format(areaCalcType))
         
@@ -148,20 +169,34 @@ def calcParabolicContactArea(penetrationDepth, tipHeight, areaCalcType, radius_c
 
     for i, depth in enumerate(penetrationDepth):
         #if the depth  is greater than the max length of the parabolic  cylinder
-        if depth  > tipHeight:
+        if depth  >= tipHeight:
             # decrease the depth used in the calculatiion to the tipHeight
             depth = tipHeight
 
-        # calc the radius
-        radius = np.sqrt(radius_coeff * depth) 
+            # calc the radius
+            radius = np.sqrt(radius_coeff * depth) 
 
-        # Check area selection
-        if areaCalcType == "mantle":
-            # if selected  calc mantle area (Surface area of a parabola with the form y = f(x) = a*x^{2})
-            area[i] = calcParabolaSurfaceArea(depth, radius_coeff)
-        
-        elif areaCalcType == "projected":
-            #if selected calc projected area
-            area[i] = calcCircleArea(radius)
-    
+            # Check area selection
+            if areaCalcType == "mantle":
+                # if selected  calc mantle area (Surface area of a parabola with the form y = f(x) = a*x^{2})
+                area[i] = calcParabolaSurfaceArea(depth, radius_coeff)
+            
+            elif areaCalcType == "projected":
+                #if selected calc projected area
+                area[i] = calcCircleArea(radius)
+
+        elif depth < tipHeight:
+
+            # calc the radius
+            radius = np.sqrt(radius_coeff * depth) 
+
+            # Check area selection
+            if areaCalcType == "mantle":
+                # if selected  calc mantle area (Surface area of a parabola with the form y = f(x) = a*x^{2})
+                area[i] = calcParabolaSurfaceArea(depth, radius_coeff)
+            
+            elif areaCalcType == "projected":
+                #if selected calc projected area
+                area[i] = calcCircleArea(radius)
+
     return area

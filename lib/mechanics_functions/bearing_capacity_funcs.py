@@ -73,10 +73,10 @@ def calc_air_drop_dyn_bearing(pffp_accel, pffp_velocity, pffp_mass, pffp_frontal
     force_drag = calc_drag_force(rho_fluid = rho_air, drag_coeff = drag_coeff, velocity = pffp_velocity, frontal_area = pffp_frontal_area )
 
     # Calc the bearing force
-    force_bearing = pffp_mass * pffp_accel + force_gravity - force_drag
+    force_bearing = (pffp_mass * pffp_accel) + force_gravity - force_drag
 
     # Calc the dyn
-    qDyn = np.array(force_bearing)/soil_contact_area
+    qDyn = (np.array(force_bearing))/soil_contact_area
 
     return  qDyn
 
@@ -153,11 +153,11 @@ def calc_water_drop_dyn_bearing(pffp_accel, pffp_velocity, pffp_mass, pffp_front
     force_drag = calc_drag_force(rho_fluid=rho_water,drag_coeff= drag_coeff, velocity=pffp_velocity, frontal_area= pffp_frontal_area)
 
     # Calc the bearing capacity force 
-    force_bearing = pffp_mass * pffp_accel + force_gravity - force_buoyant - force_drag
+    force_bearing = (pffp_mass * pffp_accel) + force_gravity - force_buoyant - force_drag
 
     # Need to convert force_bearing to array to over the stored indices in it's series
     # Calc the dynamic bearing capacity
-    qDyn = np.array(force_bearing)/soil_contact_area
+    qDyn = (np.array(force_bearing))/soil_contact_area
 
     return qDyn
 
@@ -296,7 +296,7 @@ def calc_qs_bearing_capacity(velocity, strainrateCorrectionType, qDyn, k_factor 
             f_SR = 1 + k_factor * log_val
 
         case "Brilli":
-            # Strain rate correction factor following Brilli et al. (20??) Commonly used for air drops
+            # Strain rate correction factor following Brilli et al. (2023) Commonly used for air drops
             
             # The value used by Brilli was 0.31
             if k_factor != 0.31:
@@ -304,12 +304,12 @@ def calc_qs_bearing_capacity(velocity, strainrateCorrectionType, qDyn, k_factor 
                 print("Warning: Value used for Brilli type strain rate correction is not 0.31")
             
             log_val = np.log10(velocity/ref_velocity)
-            log_val = np.nan_to_num(log_val, nan=0.0)
-            f_SR = 1 + k_factor * maxVelocity * log_val
+            #log_val = np.nan_to_num(log_val, nan=0.0)
+            f_SR = 1 + (k_factor * maxVelocity) * log_val
 
         case "invHyperSin":
             # Inv hyperbolic sin correction factor following Stephan (2015) and Randolph (2004)
-            f_SR = 1 + k_factor/np.log(10) * np.arcsinh(velocity / ref_velocity)
+            f_SR = 1 + (k_factor/np.log(10)) * np.arcsinh(velocity / ref_velocity)
 
         case _:
             ValueError("strainrateCorrectionType must be one of the folliwng: log, Brilli, invHyperSin.")

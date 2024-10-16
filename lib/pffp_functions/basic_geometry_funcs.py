@@ -80,7 +80,7 @@ def calcConeLateralSurfaceArea(radius, height):
     where the sideSlope (slant height) of the cone is calculated as:
         sideSlope = sqrt(height^2 + radius^2)
     """
-    return PI_CONST * radius * np_sqrt(height**2 + radius**2)
+    return PI_CONST * radius * (np_sqrt((height**2) + (radius**2)))
 
 def calcCircleArea(radius):
     """
@@ -105,7 +105,7 @@ def calcCircleArea(radius):
         A = π * radius^2
     """
 
-    return PI_CONST * radius**2
+    return PI_CONST * ((radius)**2)
 
 def calcParabolaSurfaceArea(depth, radius_coeff):
     """
@@ -153,7 +153,7 @@ def calcParabolaSurfaceArea(depth, radius_coeff):
     
     #TODO: Check the work on this equation one more time
     # Integral has an analytic solution (goes from depth == 0 to depth == current depth)
-    area = 4/3 * PI_CONST/radius_coeff * ( (radius_coeff * depth + radius_coeff**2/4)**(3/2) - (radius_coeff**2/4)**(3/2) )
+    area = 4/3 * (PI_CONST/radius_coeff) * ( (radius_coeff * depth + (radius_coeff**2/4))**(3/2) - (radius_coeff**2/4)**(3/2) )
 
     return area
 
