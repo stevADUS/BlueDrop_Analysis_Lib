@@ -698,7 +698,7 @@ class Drop:
             
             # Flip the sign of displacement column and make it zero at the start
             self.impulse_df[col_names[2]] = -1 * (self.impulse_df[col_names[2]] - self.impulse_df[col_names[2]].iloc[0])
-            self.impulse_df[0, col_names[2]].iloc[0] = -1 * self.impulse_df[0, col_names[2]].iloc[0]
+            self.impulse_df[0, col_names[2]].iloc[0] = 0.0
 
         # Update the units
         self.units["accel"] = "m/s^2"
