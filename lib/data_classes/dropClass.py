@@ -694,11 +694,10 @@ class Drop:
             self.impulse_df[col_names] = self.release_df[col_names].loc[self.drop_indices["start_impulse_index"]:self.drop_indices["end_impulse_index"]]
 
             # Flip the sign of velocity column
-            self.impulse_df[col_names[1]] = self.impulse_df[col_names[1]]
+            self.impulse_df[col_names[1]] = -1 * self.impulse_df[col_names[1]]
             
             # Flip the sign of displacement column and make it zero at the start
-            self.impulse_df[col_names[2]] = (self.impulse_df[col_names[2]]) - (self.impulse_df[col_names[2]].iloc[0])
-            #self.impulse_df[col_names[2]] = -1 * (self.impulse_df[col_names[2]] - self.impulse_df[col_names[2]].iloc[0])
+            self.impulse_df[col_names[2]] = -1 * (self.impulse_df[col_names[2]] - self.impulse_df[col_names[2]].iloc[0])
 
         # Update the units
         self.units["accel"] = "m/s^2"
@@ -737,7 +736,7 @@ class Drop:
         df["accel"] = convert_accel_units(val = df["accel"], input_unit = self.units["accel"], output_unit = "m/s^2")
 
         # Apply the offset
-        df["accel"] = df["accel"]  #- GRAVITY_CONST
+        df["accel"] = df["accel"] - GRAVITY_CONST
 
         # Calc the velocity and the displacement
         # Cummulative integration takes "y" then "x" -> cummulative_trapezoid(y, x)
@@ -784,7 +783,7 @@ class Drop:
         # Convert the units to m/s^2
         df["accel"] = convert_accel_units(val = df["accel"], input_unit = self.units["accel"], output_unit = "m/s^2")
 
-        df["accel"] = df["accel"]  #- GRAVITY_CONST
+        df["accel"] = df["accel"] - GRAVITY_CONST
         
         
         # Cummulative integration takes "y" then "x" -> cummulative_trapezoid(y, x)
