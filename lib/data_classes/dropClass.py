@@ -737,7 +737,7 @@ class Drop:
         df["accel"] = convert_accel_units(val = df["accel"], input_unit = self.units["accel"], output_unit = "m/s^2")
 
         # Apply the offset
-        df["accel"] = df["accel"] - GRAVITY_CONST
+        df["accel"] = df["accel"]  #- GRAVITY_CONST
 
         # Calc the velocity and the displacement
         # Cummulative integration takes "y" then "x" -> cummulative_trapezoid(y, x)
@@ -784,7 +784,7 @@ class Drop:
         # Convert the units to m/s^2
         df["accel"] = convert_accel_units(val = df["accel"], input_unit = self.units["accel"], output_unit = "m/s^2")
 
-        df["accel"] = df["accel"] - GRAVITY_CONST
+        df["accel"] = df["accel"]  #- GRAVITY_CONST
         
         
         # Cummulative integration takes "y" then "x" -> cummulative_trapezoid(y, x)
