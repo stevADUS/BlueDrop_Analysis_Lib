@@ -454,6 +454,7 @@ class pffpFile(BinaryFile):
 
             if not skip_integration:
                 # If no error caught for this drop do the integration
+                drop.only_impulse == True
                 drop.integrate_accel_data()
 
                 # Set the flag 
