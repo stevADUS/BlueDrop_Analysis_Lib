@@ -281,7 +281,7 @@ def calc_qs_bearing_capacity(velocity, strainrateCorrectionType, qDyn, k_factor 
     """
 
     # maxVelocity = np.max(velocity)
-    maxVelocity = velocity[0]
+    maxVelocity = velocity.iloc[0]
     # make sure that velocity isn't a series
     velocity = np.array(velocity)
 
