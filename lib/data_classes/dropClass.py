@@ -790,8 +790,8 @@ class Drop:
         velocity = cumulative_trapezoid(df["accel"], df["Time"], initial = 0) + init_velocity
 
         # Flip the velocity because the probe is deaccelerting and you need the impact velocity at the beginning 
-        max_velocity = velocity.max()
-        velocity = (round(max_velocity,1)) - velocity
+        # max_velocity = (round(velocity.max(),1))
+        velocity = velocity.max() - velocity
 
 
         # Need to cutoff the first time index
