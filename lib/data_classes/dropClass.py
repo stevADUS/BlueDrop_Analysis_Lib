@@ -783,14 +783,14 @@ class Drop:
         # Convert the units to m/s^2
         df["accel"] = convert_accel_units(val = df["accel"], input_unit = self.units["accel"], output_unit = "m/s^2")
 
-        df["accel"] = df["accel"] - df["accel"][0:1]
+        df["accel"] = df["accel"] - df["accel"].values[0]
         
         # Cummulative integration takes "y" then "x" -> cummulative_trapezoid(y, x)
         velocity = cumulative_trapezoid(df["accel"], df["Time"], initial = 0) + init_velocity
 
         # Flip the velocity because the probe is deaccelerting and you need the impact velocity at the beginning 
-        # max_velocity = (round(velocity.max(),1))
-        velocity = velocity.max() - velocity
+        velocity = np.flip(velocity)
+        # velocity = velocity.max() - velocity
 
 
         # Need to cutoff the first time index
