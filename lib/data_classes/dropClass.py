@@ -1129,7 +1129,7 @@ class Drop:
  
         # Temp df storage
         df = self.impulse_df
-        time = df["Time"]
+        time = df["Time"] - df["Time"].iloc[0]
         accel = df["accel"]
         vel = df["velocity"]
         displacement = df["displacement"]
@@ -1159,8 +1159,6 @@ class Drop:
             
             # Update xaxis properties
             fig.update_xaxes(title_text="Time (s)", row=3, col=1)
-
-
 
             # Update yaxis properties
             fig.update_yaxes(title_text=f"Acceleration ({accel_units})", row=1, col=1)
@@ -1199,11 +1197,16 @@ class Drop:
             axs[2].set_xlabel(f"Time [{time_units}]")
             print(time_units)
 
+            # Add grid
+            axs[0].grid(True)
+            axs[1].grid(True)
+            axs[2].grid(True)
+
             # Give the entire figure a label
             fig.suptitle(f"File drop index: {self.file_drop_index}")
 
             plt.tight_layout()
-
+            
             plt.show()
             
     def quick_view_release(self, interactive = True, figsize = [12, 8], legend = False):
