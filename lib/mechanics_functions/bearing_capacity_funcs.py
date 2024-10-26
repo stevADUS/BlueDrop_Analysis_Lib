@@ -281,7 +281,7 @@ def calc_qs_bearing_capacity(velocity, strainrateCorrectionType, qDyn, k_factor 
     """
 
     # maxVelocity = np.max(velocity)
-    maxVelocity = velocity[0]
+    maxVelocity = velocity.max()
 
     # make sure that velocity isn't a series
     velocity = np.array(velocity)
@@ -305,8 +305,10 @@ def calc_qs_bearing_capacity(velocity, strainrateCorrectionType, qDyn, k_factor 
                 print("Warning: Value used for Brilli type strain rate correction is not 0.31")
             
             log_val = np.log10(velocity/ref_velocity)
+
+            srfk = k_factor * maxVelocity
             
-            f_SR = 1 + k_factor * maxVelocity * log_val
+            f_SR = 1 + srfk * log_val
 
         case "invHyperSin":
             # Inv hyperbolic sin correction factor following Stephan (2015) and Randolph (2004)

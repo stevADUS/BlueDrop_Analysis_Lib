@@ -1101,7 +1101,7 @@ class Drop:
         self.bearing_dfs[area_type][col_name] = contact_area
     
     # Plotting functions
-    def quick_view_impulse(self, interactive = True, figsize= [12, 8], legend = False):
+    def quick_view_impulse(self, interactive = True, figsize= [7, 7], legend = False):
         """
         Provide a quick view of impulse data through visualizations.
 

@@ -1,4 +1,5 @@
-from numpy import sqrt as np_sqrt
+import numpy as np
+# from numpy import sqrt as np_sqrt
 
 from lib.general_functions.global_constants import PI_CONST
 
@@ -80,7 +81,7 @@ def calcConeLateralSurfaceArea(radius, height):
     where the sideSlope (slant height) of the cone is calculated as:
         sideSlope = sqrt(height^2 + radius^2)
     """
-    return PI_CONST * radius * (np_sqrt((height**2) + (radius**2)))
+    return PI_CONST * radius * (np.sqrt((height**2) + (radius**2)))
 
 def calcCircleArea(radius):
     """

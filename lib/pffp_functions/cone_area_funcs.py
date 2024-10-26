@@ -51,106 +51,105 @@ def calc_pffp_contact_area(penetrationDepth, areaCalcType, tipType, tipProps, ti
 
 def calcFFPConeContactArea(penetrationDepth, tipHeight, baseRadius, coneTipRadius, areaCalcType):
     """ 
-    Purpose: calculates the contact area for the cone top of the FFP
+    Calculates the contact area for the cone top of the FFP.
 
-    where:
-        penetrationDepth: Array of penetration depth values
-        baseRadius: Radius of the Cone at the base (Circular side)
-        coneTipRadius: Radius of the cone tip (is not zero)
-        tipHeight: Height of the cone when measured normal to the circular base
-        areaCalcType: Selection of mantle or projected
+    Parameters
+    ----------
+    penetrationDepth: np.ndarray
+        Array of penetration depth values.
+    baseRadius: float
+        Radius of the Cone at the base (Circular side).
+    coneTipRadius: float
+        Radius of the cone tip (is not zero).
+    tipHeight: float
+        Height of the cone when measured normal to the circular base.
+    areaCalcType: str
+        Selection of "mantle" or "projected" for area calculation type.
 
-    return: Array of calculated contact area values for each penetration depth.
-    rtype: np.ndarray
-    raises ValueError: If `areaCalcType` is not "mantle" or "projected"
+    Returns
+    -------
+    np.ndarray
+        Array of calculated contact area values for each penetration depth.
+
+    Raises
+    ------
+    ValueError
+        If `areaCalcType` is not "mantle" or "projected".
     """
+
+    if areaCalcType not in ["mantle", "projected"]:
+        raise ValueError("areaCalcType must be 'mantle' or 'projected'. Currently is: {}".format(areaCalcType))
 
     # Init array to store area
     area = np.ones(len(penetrationDepth))
 
     # Calc cone side slope
-    coneSideSlope = (baseRadius-coneTipRadius)/tipHeight
+    coneSideSlope = (baseRadius - coneTipRadius) / tipHeight
 
     for i, depth in enumerate(penetrationDepth):
         
-        # if the depth is greater than the tipHeight of the cone
         if depth >= tipHeight:
-            # decrease the depth used in the calculation to the tipHeight
+            # set the depth used in the calculation to the tipHeight
             depth = tipHeight
-            # define radius
             radius = baseRadius
-            # Check area selection
-            if areaCalcType == "mantle":
-                # if selected calc mantle area (Same as surface area without the base of cone)
-                area[i] = calcConeLateralSurfaceArea(radius, depth)
-
-            elif areaCalcType == "projected":
-                # if selected calc projected area
-                area[i] = calcCircleArea(radius)
-
-        elif depth < tipHeight:
-            # Calc the radius
+        else:
+            # Calculate the radius at the current depth
             radius = coneTipRadius + depth * coneSideSlope
-            # Check area selection
-            if areaCalcType == "mantle":
-                # if selected calc mantle area (Same as surface area without the base of cone)
-                area[i] = calcConeLateralSurfaceArea(radius, depth)
 
-            elif areaCalcType == "projected":
-                # if selected calc projected area
-                area[i] = calcCircleArea(radius)
-
-        else: 
-            return ValueError("areaCalcType must be mantle or projected. Currently is: {}".format(areaCalcType))
+        # Check area selection and calculate accordingly
+        if areaCalcType == "mantle":
+            area[i] = calcConeLateralSurfaceArea(radius, depth)
+        elif areaCalcType == "projected":
+            area[i] = calcCircleArea(radius)  # Using circle area formula directly
 
     return area
 
+
 def calcFFPBluntContactArea(penetrationDepth, tipHeight, baseRadius, areaCalcType):
     """
-    Purpose: Calc contact area for the blunt pffp tip
+    Calculates the contact area for the blunt FFP tip (cylindrical shape).
     
-    where:
-        penetrationDepth: Array of penetration depth values
-        tipHeight: Height of the tip measured normal to the circular base
-        baseRadius: Radius of the Cone at the base (Circular side)
-        areaCalcType: Selection of mantle or projected
+    Parameters
+    ----------
+    penetrationDepth: np.ndarray
+        Array of penetration depth values.
+    tipHeight: float
+        Height of the tip measured normal to the circular base.
+    baseRadius: float
+        Radius of the base of the blunt cylinder.
+    areaCalcType: str
+        Selection of "mantle" or "projected" for area calculation type.
+    
+    Returns
+    -------
+    np.ndarray
+        Array of calculated contact area values for each penetration depth.
+
+    Raises
+    ------
+    ValueError
+        If `areaCalcType` is not "mantle" or "projected".
     """
-    # init array to store area calcs
+
+    if areaCalcType not in ["mantle", "projected"]:
+        raise ValueError("areaCalcType must be 'mantle' or 'projected'. Currently is: {}".format(areaCalcType))
+
+    # Init array to store area calcs
     area = np.zeros(len(penetrationDepth))
 
     for i, depth in enumerate(penetrationDepth):
-        # if the depth is greater than the tipHeight of the blunt cylinder
         if depth >= tipHeight:
-            # decrease the depth used in the calculation to the tipHeight
             depth = tipHeight
         
-            # Check the tipHeight in one line than calc the area in one line instead of looping
-            # radius is constant for cylinder
-            radius = baseRadius
-            # Check area selection
-            if areaCalcType == "mantle":
-                # if selected calc mantle area (Surface Area of a cylinder)
-                area[i] = calcCylinderSurfaceArea(radius, depth)
+        # radius is constant for cylinder
+        radius = baseRadius
 
-            elif areaCalcType == "projected":
-                # if selected calc projected area
-                area[i] = calcCircleArea(radius)
+        # Check area selection
+        if areaCalcType == "mantle":
+            area[i] = calcCylinderSurfaceArea(radius, depth)  # Cylinder mantle area (without top and bottom)
+        elif areaCalcType == "projected":
+            area[i] = calcCircleArea(radius)  # Circle area for the projection
 
-        elif depth < tipHeight:
-            # radius is constant for cylinder
-            radius = baseRadius
-            # Check area selection
-            if areaCalcType == "mantle":
-                # if selected calc mantle area (Surface Area of a cylinder)
-                area[i] = calcCylinderSurfaceArea(radius, depth)
-
-            elif areaCalcType == "projected":
-                # if selected calc projected area
-                area[i] = calcCircleArea(radius)
-    
-        else: 
-            return ValueError("areaCalcType must be mantle or projected. Currently is: {}".format(areaCalcType))
-        
     return area
 
 def calcParabolicContactArea(penetrationDepth, tipHeight, areaCalcType, radius_coeff = 2.4184):
