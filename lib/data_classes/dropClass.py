@@ -305,7 +305,7 @@ class Drop:
         #Otherwise Store the release index
         return release_index[-1]
 
-    def get_impulse_start(self, accel, time, time_tol = 0.005, sample_frq = 120_000, gradient_tol = 400, accel_lim = [5.8, 25],
+    def get_impulse_start(self, accel, time, time_tol = 0.001, sample_frq = 120_000, gradient_tol = 400, accel_lim = [5.8, 25],
                           window_size = 100, debug = False):
         """
         Determine the start of the impulse based on acceleration data.
@@ -391,13 +391,13 @@ class Drop:
 
         # In the case of really high accelerations the smoothig done below bleads over and a higher gradient tolerance is needed
         if max_val > accel_lim[0] and max_val < accel_lim[1]:
-            window_size = 7
-            scale =  250 #1000
+            window_size = 3
+            scale =  100 #1000
             gradient_tol = accel.max() * scale
 
         elif max_val >= accel_lim[1]: # Conditions for higher accelerations
-            window_size = 7
-            scale =  1000
+            window_size = 3
+            scale =  500
             gradient_tol = accel.max() * scale 
 
         # Window average the acceleration and the time
@@ -545,7 +545,7 @@ class Drop:
 
         if not self.manually_processed:
             # Get the end of the impulse
-            end_drop_index = self.get_impulse_end(accel, high_tol = 1.05)
+            end_drop_index = self.get_impulse_end(accel, high_tol = 1.1)
 
             # Get the start of the impulse
             start_drop_index = self.get_impulse_start(accel, time)
@@ -778,12 +778,14 @@ class Drop:
         """
 
         # Temp storage for the df
-        df = self.impulse_df.copy()    
+        df = self.impulse_df.copy()  
+
+        offset = df["accel"].iloc[0] * GRAVITY_CONST 
 
         # Convert the units to m/s^2
         df["accel"] = convert_accel_units(val = df["accel"], input_unit = self.units["accel"], output_unit = "m/s^2")
 
-        df["accel"] = (df["accel"] - df["accel"].iloc[0]) - GRAVITY_CONST
+        df["accel"] = df["accel"] - offset #- GRAVITY_CONST
         
         # Cummulative integration takes "y" then "x" -> cummulative_trapezoid(y, x)
         velocity = cumulative_trapezoid(df["accel"], df["Time"], initial = 0) + init_velocity

@@ -532,6 +532,7 @@ class pffpFile(BinaryFile):
             raise ValueError("Only use this function for drops that had there indices manually selected")
         
         drop.cut_accel_data(accel, time, input_units = {"accel":"g", "Time":"min"} )
+        drop.only_impulse = True
         drop.integrate_accel_data()
 
         # Set the flag 
