@@ -88,19 +88,22 @@ def calcFFPConeContactArea(penetrationDepth, tipHeight, baseRadius, coneTipRadiu
 
     for i, depth in enumerate(penetrationDepth):
         
+        # if the depth is greater than the tipHeight of the cone
         if depth > tipHeight:
-            # set the depth used in the calculation to the tipHeight
+            # decrease the depth used in the calculation to the tipHeight
             depth = tipHeight
-            radius = baseRadius
-        else:
-            # Calculate the radius at the current depth
-            radius = coneTipRadius + depth * coneSideSlope
+        
+        # Calc the radius
+        radius = coneTipRadius + depth * coneSideSlope
 
-        # Check area selection and calculate accordingly
+        # Check area selection
         if areaCalcType == "mantle":
+            # if selected calc mantle area (Same as surface area without the base of cone)
             area[i] = calcConeLateralSurfaceArea(radius, depth)
+
         elif areaCalcType == "projected":
-            area[i] = calcCircleArea(radius)  # Using circle area formula directly
+            # if selected calc projected area
+            area[i] = calcCircleArea(radius)
 
     return area
 
