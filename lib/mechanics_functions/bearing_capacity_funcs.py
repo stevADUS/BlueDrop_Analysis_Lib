@@ -280,12 +280,9 @@ def calc_qs_bearing_capacity(velocity, strainrateCorrectionType, qDyn, k_factor 
 
     """
 
-    maxVelocity = np.max(velocity)
-    # maxVelocity = velocity.max()
-
     # make sure that velocity isn't a series
     velocity = np.array(velocity)
-    # maxVelocity = velocity.max()
+    maxVelocity = np.max(velocity)
 
     # Selct with strain rate factor should be used
     match strainrateCorrectionType:
