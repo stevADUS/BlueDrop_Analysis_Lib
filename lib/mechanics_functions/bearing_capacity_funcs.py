@@ -67,13 +67,13 @@ def calc_air_drop_dyn_bearing(pffp_accel, pffp_velocity, pffp_mass, pffp_frontal
     """
 
     # Calc the force of gravity
-    force_gravity = pffp_mass * gravity
+    # force_gravity = pffp_mass * gravity
     
     # Calc the drag force
-    force_drag = calc_drag_force(rho_fluid = rho_air, drag_coeff = drag_coeff, velocity = pffp_velocity, frontal_area = pffp_frontal_area )
+    # force_drag = calc_drag_force(rho_fluid = rho_air, drag_coeff = drag_coeff, velocity = pffp_velocity, frontal_area = pffp_frontal_area )
 
     # Calc the bearing force
-    force_bearing = (pffp_mass * pffp_accel) + force_gravity - force_drag
+    force_bearing = pffp_mass * pffp_accel #+ force_gravity - force_drag
 
     # Calc the dyn
     qDyn = (np.array(force_bearing))/soil_contact_area
@@ -280,12 +280,12 @@ def calc_qs_bearing_capacity(velocity, strainrateCorrectionType, qDyn, k_factor 
 
     """
 
-    # maxVelocity = np.max(velocity)
+    maxVelocity = np.max(velocity)
     # maxVelocity = velocity.max()
 
     # make sure that velocity isn't a series
     velocity = np.array(velocity)
-    maxVelocity = velocity[0]
+    # maxVelocity = velocity.max()
 
     # Selct with strain rate factor should be used
     match strainrateCorrectionType:
@@ -310,6 +310,7 @@ def calc_qs_bearing_capacity(velocity, strainrateCorrectionType, qDyn, k_factor 
             srfk = k_factor * maxVelocity
             
             f_SR = 1 + srfk * log_val
+            f_SR = np.array(f_SR)
 
         case "invHyperSin":
             # Inv hyperbolic sin correction factor following Stephan (2015) and Randolph (2004)

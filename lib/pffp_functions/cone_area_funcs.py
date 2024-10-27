@@ -88,7 +88,7 @@ def calcFFPConeContactArea(penetrationDepth, tipHeight, baseRadius, coneTipRadiu
 
     for i, depth in enumerate(penetrationDepth):
         
-        if depth >= tipHeight:
+        if depth > tipHeight:
             # set the depth used in the calculation to the tipHeight
             depth = tipHeight
             radius = baseRadius
