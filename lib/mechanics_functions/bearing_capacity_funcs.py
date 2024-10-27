@@ -309,7 +309,7 @@ def calc_qs_bearing_capacity(velocity, strainrateCorrectionType, qDyn, k_factor 
 
             srfk = k_factor * maxVelocity
             
-            f_SR = 1 + srfk * log_val
+            f_SR = (1 + srfk) * log_val
             f_SR = np.array(f_SR)
 
         case "invHyperSin":
