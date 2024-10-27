@@ -67,13 +67,13 @@ def calc_air_drop_dyn_bearing(pffp_accel, pffp_velocity, pffp_mass, pffp_frontal
     """
 
     # Calc the force of gravity
-    # force_gravity = pffp_mass * gravity
+    force_gravity = pffp_mass * gravity
     
     # Calc the drag force
-    # force_drag = calc_drag_force(rho_fluid = rho_air, drag_coeff = drag_coeff, velocity = pffp_velocity, frontal_area = pffp_frontal_area )
+    force_drag = calc_drag_force(rho_fluid = rho_air, drag_coeff = drag_coeff, velocity = pffp_velocity, frontal_area = pffp_frontal_area )
 
     # Calc the bearing force
-    force_bearing = pffp_mass * pffp_accel  #+ force_gravity - force_drag
+    force_bearing = pffp_mass * pffp_accel  + force_gravity - force_drag
 
     # Calc the dyn
     qDyn = (np.array(force_bearing))/soil_contact_area

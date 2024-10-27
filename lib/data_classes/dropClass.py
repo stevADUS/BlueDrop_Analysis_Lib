@@ -780,12 +780,12 @@ class Drop:
         # Temp storage for the df
         df = self.impulse_df.copy()  
 
-        offset = df["accel"].iloc[0] * GRAVITY_CONST 
+        # offset = df["accel"].iloc[0] * GRAVITY_CONST 
 
         # Convert the units to m/s^2
         df["accel"] = convert_accel_units(val = df["accel"], input_unit = self.units["accel"], output_unit = "m/s^2")
 
-        df["accel"] = df["accel"] - offset #GRAVITY_CONST
+        df["accel"] = df["accel"] - GRAVITY_CONST
         
         # Cummulative integration takes "y" then "x" -> cummulative_trapezoid(y, x)
         velocity = cumulative_trapezoid(df["accel"], df["Time"], initial = 0) + init_velocity
