@@ -67,7 +67,7 @@ def calc_air_drop_dyn_bearing(pffp_accel, pffp_velocity, pffp_mass, pffp_frontal
     """
 
     # Calc the force of gravity
-    force_gravity = 0
+    force_gravity = pffp_mass * GRAVITY_CONST
     
     # Calc the drag force
     force_drag = calc_drag_force(rho_fluid = rho_air, drag_coeff = drag_coeff, velocity = pffp_velocity, frontal_area = pffp_frontal_area )
