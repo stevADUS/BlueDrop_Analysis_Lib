@@ -814,7 +814,7 @@ class pffpFile(BinaryFile):
         drop.manually_processed = True
 
     # Plotting functions
-    def quick_view(self, interactive = False, figsize = [12, 8], legend = False):
+    def quick_view(self, interactive = False, figsize = [8, 8], legend = False):
         """
         Provide a quick view of the file data by plotting accelerometer, pore pressure, and tilt sensor data.
 
